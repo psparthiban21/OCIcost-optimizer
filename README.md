@@ -102,6 +102,39 @@ http://127.0.0.1:8080/api/setup
 
 The dashboard shows a setup banner if OCI live mode is selected but required details are missing.
 
+## Local Git State
+
+This project is tracked in a local Git repository. Check the current state:
+
+```bash
+git status
+```
+
+Save a new checkpoint:
+
+```bash
+git add .
+git commit -m "Describe the change"
+```
+
+Show recent checkpoints:
+
+```bash
+git log --oneline --max-count=10
+```
+
+Revert a committed change without rewriting history:
+
+```bash
+git revert <commit-sha>
+```
+
+For the initial baseline, the first commit is:
+
+```text
+b7727f5 Initial standalone OCI cost optimizer app
+```
+
 ## Phase 1 Scope
 
 - Run as a single local process.
