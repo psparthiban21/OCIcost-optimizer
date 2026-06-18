@@ -42,11 +42,16 @@ async function renderSetupBanner() {
   }
 
   const missing = setup.missing.map((item) => `<li><strong>${item.label}:</strong> ${item.help}</li>`).join("");
+  const newLaptopHelp = (setup.assistance?.newLaptop ?? []).map((item) => `<li>${item}</li>`).join("");
   banner.className = "setup-banner warn";
   banner.innerHTML = `
     <strong>OCI setup needs attention.</strong>
     <span>The app is running, but live OCI data needs these items:</span>
     <ul>${missing}</ul>
+    <details>
+      <summary>New laptop setup guide</summary>
+      <ul>${newLaptopHelp}</ul>
+    </details>
   `;
   banner.hidden = false;
 }

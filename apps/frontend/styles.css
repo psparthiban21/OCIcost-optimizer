@@ -118,6 +118,15 @@ td {
   margin-top: 4px;
 }
 
+.setup-banner details {
+  margin-top: 10px;
+}
+
+.setup-banner summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
 .setup-banner.ok {
   border-color: rgba(53, 196, 134, 0.35);
   background: rgba(53, 196, 134, 0.1);

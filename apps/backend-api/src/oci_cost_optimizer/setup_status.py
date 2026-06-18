@@ -56,7 +56,28 @@ def create_setup_status(settings: Settings) -> dict[str, Any]:
             "label": "OCI private key file",
             "ok": settings.data_provider != "oci" or bool(settings.oci_key_file) and settings.oci_key_file.is_file(),
             "value": str(settings.oci_key_file) if settings.oci_key_file else "missing",
-            "help": "Inside Docker, the key file path must exist inside the container. Prefer mounting ./oci-secrets to /oci.",
+            "help": "Inside Docker, the key file path must exist inside the container. Mount ./.oci to /oci and use key_file=/oci/oci_api_key.pem.",
+        },
+        {
+            "id": "llm_provider",
+            "label": "LLM provider",
+            "ok": settings.llm_provider in {"mock", "openai"},
+            "value": settings.llm_provider,
+            "help": "Use LLM_PROVIDER=mock for deterministic local answers or LLM_PROVIDER=openai for OpenAI-backed recommendations.",
+        },
+        {
+            "id": "openai_api_key",
+            "label": "OpenAI API key",
+            "ok": settings.llm_provider != "openai" or settings.openai_api_key_set,
+            "value": "set" if settings.openai_api_key_set else "missing",
+            "help": "Set OPENAI_API_KEY in .env only. Do not put API keys in README, source code, or Git.",
+        },
+        {
+            "id": "openai_model",
+            "label": "OpenAI model",
+            "ok": settings.llm_provider != "openai" or bool(settings.openai_model),
+            "value": settings.openai_model or "missing",
+            "help": "Set OPENAI_MODEL to the model used for LLM recommendations.",
         },
     ]
     missing = [check for check in checks if not check["ok"]]
@@ -71,6 +92,27 @@ def create_setup_status(settings: Settings) -> dict[str, Any]:
             "memoryLimit": "2g",
             "cpuLimit": "1.0",
             "recommendedUrl": "http://127.0.0.1:8080",
+        },
+        "assistance": {
+            "newLaptop": [
+                "Run in mock mode first: DATA_PROVIDER=mock and LLM_PROVIDER=mock.",
+                "For OCI live mode, create .oci/config and .oci/oci_api_key.pem, then mount ./.oci to /oci in Docker.",
+                "Inside Docker, OCI config key_file must be /oci/oci_api_key.pem, not a host path such as /Users/name/...",
+                "For OpenAI recommendations, set LLM_PROVIDER=openai and OPENAI_API_KEY in .env.",
+            ],
+            "ociRequiredEnv": [
+                "DATA_PROVIDER=oci",
+                "OCI_USER_OCID",
+                "OCI_FINGERPRINT",
+                "OCI_TENANCY_OCID",
+                "OCI_REGION",
+                "OCI_KEY_FILE=/oci/oci_api_key.pem",
+            ],
+            "openaiRequiredEnv": [
+                "LLM_PROVIDER=openai",
+                "OPENAI_API_KEY",
+                "OPENAI_MODEL",
+            ],
         },
     }
 

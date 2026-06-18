@@ -102,6 +102,38 @@ http://127.0.0.1:8080/api/setup
 
 The dashboard shows a setup banner if OCI live mode is selected but required details are missing.
 
+## New Laptop First Run
+
+The app can start before the user has OCI or OpenAI credentials. The recommended first run is mock mode:
+
+```bash
+docker compose up --build
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8080
+```
+
+When a user wants live OCI data, they can either mount an OCI CLI config or enter individual values in `.env`. The app assists through:
+
+```text
+http://127.0.0.1:8080/api/setup
+```
+
+The dashboard also shows a setup banner with missing items. It never prints secret values; it reports only `set` or `missing`.
+
+For OpenAI-backed recommendations, the user sets:
+
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+Keep OpenAI keys in `.env` only. Do not commit them.
+
 ## Local Git State
 
 This project is tracked in a local Git repository. Check the current state:

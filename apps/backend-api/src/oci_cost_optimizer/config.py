@@ -23,6 +23,9 @@ class Settings:
     oci_user_ocid: str
     oci_fingerprint: str
     oci_key_file: Path
+    llm_provider: str
+    openai_api_key_set: bool
+    openai_model: str
 
 
 def _load_env_file(path: Path) -> None:
@@ -106,6 +109,23 @@ def _write_generated_oci_config(project_root: Path, profile: str) -> Path | None
     return config_file
 
 
+def _first_existing_path(project_root: Path, values: list[str]) -> Path:
+    fallback: Path | None = None
+
+    for value in values:
+        if not value:
+            continue
+
+        path = _project_path(project_root, value)
+        if fallback is None:
+            fallback = path
+
+        if path.is_file():
+            return path
+
+    return fallback or Path("")
+
+
 def load_settings() -> Settings:
     package_file = Path(__file__).resolve()
     project_root = _find_project_root(package_file)
@@ -117,7 +137,7 @@ def load_settings() -> Settings:
     generated_oci_config = configured_oci_config if configured_oci_config.is_file() else _write_generated_oci_config(project_root, oci_profile)
     oci_config_file = generated_oci_config or configured_oci_config
     oci_profile_values = _read_oci_profile(oci_config_file, oci_profile)
-    key_file_value = oci_profile_values.get("key_file") or os.getenv("OCI_KEY_FILE", "")
+    oci_key_file = _first_existing_path(project_root, [oci_profile_values.get("key_file", ""), os.getenv("OCI_KEY_FILE", "")])
 
     return Settings(
         app_name=os.getenv("APP_NAME", "oci-cost-optimizer-backend"),
@@ -134,5 +154,8 @@ def load_settings() -> Settings:
         oci_region=os.getenv("OCI_REGION", oci_profile_values.get("region", "")),
         oci_user_ocid=os.getenv("OCI_USER_OCID", oci_profile_values.get("user", "")),
         oci_fingerprint=os.getenv("OCI_FINGERPRINT", oci_profile_values.get("fingerprint", "")),
-        oci_key_file=_project_path(project_root, key_file_value) if key_file_value else Path(""),
+        oci_key_file=oci_key_file,
+        llm_provider=os.getenv("LLM_PROVIDER", "mock").lower(),
+        openai_api_key_set=bool(os.getenv("OPENAI_API_KEY")),
+        openai_model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
     )
