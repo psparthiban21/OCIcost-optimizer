@@ -90,6 +90,7 @@ docker run --rm \
   -e PORT=8080 \
   -e OCI_CLI_PATH=oci \
   -e OCI_CONFIG_FILE=/oci/config \
+  -v "$PWD/config:/config:ro" \
   -v "$PWD/.oci:/oci:ro" \
   oci-cost-optimizer/backend-api:local
 ```
@@ -97,6 +98,7 @@ docker run --rm \
 The app also exposes setup assistance at:
 
 ```text
+http://127.0.0.1:8080/setup
 http://127.0.0.1:8080/api/setup
 ```
 
@@ -119,10 +121,30 @@ http://127.0.0.1:8080
 When a user wants live OCI data, they can either mount an OCI CLI config or enter individual values in `.env`. The app assists through:
 
 ```text
+http://127.0.0.1:8080/setup
 http://127.0.0.1:8080/api/setup
 ```
 
 The dashboard also shows a setup banner with missing items. It never prints secret values; it reports only `set` or `missing`.
+
+Setup mode can load an env file after the app has already started. For Docker, put the file in the ignored local `config/` folder:
+
+```text
+config/.env
+```
+
+Docker Compose mounts that folder at `/config`, so enter this path in setup mode:
+
+```text
+/config/.env
+```
+
+The env file should include whichever providers the user wants to enable:
+
+```bash
+DATA_PROVIDER=oci
+LLM_PROVIDER=openai
+```
 
 For OpenAI-backed recommendations, the user sets:
 

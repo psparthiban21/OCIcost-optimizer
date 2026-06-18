@@ -39,6 +39,131 @@ select {
   padding: 20px 0 56px;
 }
 
+.setup-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+}
+
+.setup-card {
+  width: min(760px, 100%);
+}
+
+.setup-card .brand-mark {
+  margin-bottom: 14px;
+}
+
+.setup-copy,
+.setup-hint,
+.setup-result,
+.setup-links {
+  margin-top: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.setup-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.setup-form label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.setup-form input {
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.setup-form button {
+  width: fit-content;
+  border: 0;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+
+.setup-hint,
+.setup-result {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 10px 12px;
+}
+
+.setup-result.ok {
+  border-color: rgba(53, 196, 134, 0.35);
+  color: #c7f5dc;
+}
+
+.setup-result.warn {
+  border-color: rgba(244, 178, 63, 0.35);
+  color: #ffe0a3;
+}
+
+.setup-checks {
+  margin-top: 18px;
+}
+
+.setup-checks ul {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setup-checks li {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 10px 12px;
+}
+
+.setup-checks li span {
+  display: inline-block;
+  min-width: 58px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.setup-checks li.ok span {
+  color: var(--green);
+}
+
+.setup-checks li.warn span {
+  color: var(--amber);
+}
+
+.setup-checks li em {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-style: normal;
+  overflow-wrap: anywhere;
+}
+
+.setup-checks li p {
+  margin-top: 5px;
+  color: var(--muted);
+}
+
+.setup-links {
+  display: flex;
+  gap: 14px;
+}
+
+.setup-links a {
+  color: var(--text);
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -116,6 +241,11 @@ td {
 
 .setup-banner li + li {
   margin-top: 4px;
+}
+
+.setup-banner a {
+  color: var(--text);
+  font-weight: 800;
 }
 
 .setup-banner details {

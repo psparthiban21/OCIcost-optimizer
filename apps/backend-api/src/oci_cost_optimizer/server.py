@@ -8,7 +8,7 @@ from mimetypes import guess_type
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from .config import Settings, load_settings
+from .config import Settings, load_settings, select_env_file
 from .data_provider import answer_copilot, create_cost_optimizer_data
 from .setup_status import create_setup_status
 
@@ -68,6 +68,10 @@ class ApiHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
 
+        if parsed.path == "/api/setup/env-file":
+            self._handle_env_file_setup()
+            return
+
         if parsed.path != "/api/copilot":
             self._send_json({"error": "not_found"}, status=HTTPStatus.NOT_FOUND)
             return
@@ -75,6 +79,32 @@ class ApiHandler(BaseHTTPRequestHandler):
         body = self._read_json_body()
         answer = answer_copilot(body.get("question", ""), body.get("filters", {}), self.settings)
         self._send_json({"answer": answer, "mode": self.settings.mode})
+
+    def _handle_env_file_setup(self) -> None:
+        body = self._read_json_body()
+        path = str(body.get("path", "")).strip()
+
+        if not path:
+            self._send_json({"error": "missing_env_file_path"}, status=HTTPStatus.BAD_REQUEST)
+            return
+
+        try:
+            selected = select_env_file(path)
+            type(self).settings = load_settings()
+        except FileNotFoundError:
+            self._send_json(
+                {
+                    "error": "env_file_not_found",
+                    "message": "The file must exist at this path from inside the app or Docker container.",
+                    "path": path,
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+            return
+
+        setup = create_setup_status(self.settings)
+        log_event("env_file_selected", path=str(selected), setup_ready=setup["ready"])
+        self._send_json({"ok": True, "envFile": str(selected), "setup": setup})
 
     def log_message(self, format: str, *args: object) -> None:
         log_event("http_request", method=self.command, path=self.path, client=self.client_address[0], message=format % args)
@@ -98,7 +128,12 @@ class ApiHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _serve_static(self, requested_path: str) -> None:
-        relative_path = "index.html" if requested_path == "/" else requested_path.lstrip("/")
+        if requested_path == "/":
+            relative_path = "index.html"
+        elif requested_path == "/setup":
+            relative_path = "setup.html"
+        else:
+            relative_path = requested_path.lstrip("/")
         static_root = self.settings.static_root.resolve()
         file_path = (static_root / relative_path).resolve()
 

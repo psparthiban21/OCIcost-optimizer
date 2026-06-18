@@ -10,6 +10,13 @@ from .config import Settings
 def create_setup_status(settings: Settings) -> dict[str, Any]:
     checks = [
         {
+            "id": "env_file",
+            "label": "Environment file",
+            "ok": True,
+            "value": str(settings.env_file_path) if settings.env_file_loaded else "not loaded; using process environment",
+            "help": "Optional. Create a .env file, then open /setup.html and provide its path as seen by this app or container.",
+        },
+        {
             "id": "data_provider",
             "label": "Data provider",
             "ok": settings.data_provider in {"mock", "oci"},
@@ -86,6 +93,10 @@ def create_setup_status(settings: Settings) -> dict[str, Any]:
         "ready": not missing,
         "mode": settings.mode,
         "dataProvider": settings.data_provider,
+        "envFile": {
+            "loaded": settings.env_file_loaded,
+            "path": str(settings.env_file_path) if settings.env_file_loaded else None,
+        },
         "checks": checks,
         "missing": missing,
         "docker": {
@@ -96,6 +107,7 @@ def create_setup_status(settings: Settings) -> dict[str, Any]:
         "assistance": {
             "newLaptop": [
                 "Run in mock mode first: DATA_PROVIDER=mock and LLM_PROVIDER=mock.",
+                "Open /setup.html to provide the initial .env file path after creating it.",
                 "For OCI live mode, create .oci/config and .oci/oci_api_key.pem, then mount ./.oci to /oci in Docker.",
                 "Inside Docker, OCI config key_file must be /oci/oci_api_key.pem, not a host path such as /Users/name/...",
                 "For OpenAI recommendations, set LLM_PROVIDER=openai and OPENAI_API_KEY in .env.",

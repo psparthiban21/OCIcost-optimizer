@@ -25,6 +25,7 @@ services:
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
     volumes:
       - ./.oci:/oci:ro
+      - ./config:/config:ro
     mem_limit: 2g
     cpus: 1.0
     pids_limit: 256

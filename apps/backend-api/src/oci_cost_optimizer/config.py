@@ -6,6 +6,10 @@ import os
 from pathlib import Path
 
 
+RUNTIME_DIR = Path(os.getenv("OCI_COST_OPTIMIZER_RUNTIME_DIR", "/tmp/oci-cost-optimizer"))
+ENV_FILE_POINTER = RUNTIME_DIR / "env-file-path"
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str
@@ -26,9 +30,11 @@ class Settings:
     llm_provider: str
     openai_api_key_set: bool
     openai_model: str
+    env_file_path: Path
+    env_file_loaded: bool
 
 
-def _load_env_file(path: Path) -> None:
+def _load_env_file(path: Path, *, override: bool = False) -> None:
     if not path.is_file():
         return
 
@@ -39,7 +45,43 @@ def _load_env_file(path: Path) -> None:
             continue
 
         key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+
+        if override:
+            os.environ[key] = value
+        else:
+            os.environ.setdefault(key, value)
+
+
+def _selected_env_file() -> Path | None:
+    env_file = os.getenv("ENV_FILE")
+
+    if env_file:
+        return Path(env_file).expanduser()
+
+    if ENV_FILE_POINTER.is_file():
+        selected = ENV_FILE_POINTER.read_text(encoding="utf-8").strip()
+        return Path(selected).expanduser() if selected else None
+
+    return None
+
+
+def select_env_file(path: str) -> Path:
+    selected = Path(path).expanduser()
+
+    if not selected.is_absolute() and not selected.is_file():
+        project_root = _find_project_root(Path(__file__).resolve())
+        selected = project_root / selected
+
+    if not selected.is_file():
+        raise FileNotFoundError(f"Env file was not found: {selected}")
+
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    ENV_FILE_POINTER.write_text(str(selected), encoding="utf-8")
+    ENV_FILE_POINTER.chmod(0o600)
+    _load_env_file(selected, override=True)
+    return selected
 
 
 def _project_path(project_root: Path, value: str | Path) -> Path:
@@ -130,7 +172,13 @@ def load_settings() -> Settings:
     package_file = Path(__file__).resolve()
     project_root = _find_project_root(package_file)
     apps_root = project_root / "apps" if (project_root / "apps").is_dir() else project_root
-    _load_env_file(project_root / ".env")
+    default_env_file = project_root / ".env"
+    selected_env_file = _selected_env_file()
+    _load_env_file(default_env_file)
+
+    if selected_env_file:
+        _load_env_file(selected_env_file, override=True)
+
     default_oci_cli = project_root / ".venv" / "bin" / "oci"
     oci_profile = os.getenv("OCI_PROFILE", "DEFAULT")
     configured_oci_config = _project_path(project_root, os.getenv("OCI_CONFIG_FILE", project_root / ".oci" / "config")).resolve()
@@ -158,4 +206,6 @@ def load_settings() -> Settings:
         llm_provider=os.getenv("LLM_PROVIDER", "mock").lower(),
         openai_api_key_set=bool(os.getenv("OPENAI_API_KEY")),
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+        env_file_path=selected_env_file or default_env_file,
+        env_file_loaded=bool((selected_env_file or default_env_file).is_file()),
     )

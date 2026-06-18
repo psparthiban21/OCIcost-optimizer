@@ -48,6 +48,7 @@ async function renderSetupBanner() {
     <strong>OCI setup needs attention.</strong>
     <span>The app is running, but live OCI data needs these items:</span>
     <ul>${missing}</ul>
+    <p><a href="/setup">Open setup mode</a></p>
     <details>
       <summary>New laptop setup guide</summary>
       <ul>${newLaptopHelp}</ul>
