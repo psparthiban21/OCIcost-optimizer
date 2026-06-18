@@ -41,7 +41,25 @@ def _load_env_file(path: Path) -> None:
 
 def _project_path(project_root: Path, value: str | Path) -> Path:
     path = Path(value)
+    if len(path.parts) == 1 and not path.is_absolute():
+        return path
     return path if path.is_absolute() else project_root / path
+
+
+def _find_project_root(package_file: Path) -> Path:
+    candidates = [package_file.parent, *package_file.parents, Path.cwd()]
+
+    for candidate in candidates:
+        if (candidate / "docker-compose.yml").is_file() or (candidate / ".env").is_file():
+            return candidate
+
+        if (candidate / "apps").is_dir():
+            return candidate
+
+        if (candidate / "src").is_dir() and (candidate / "frontend").is_dir():
+            return candidate
+
+    return Path.cwd()
 
 
 def _read_oci_profile(config_file: Path, profile: str) -> dict[str, str]:
@@ -50,6 +68,9 @@ def _read_oci_profile(config_file: Path, profile: str) -> dict[str, str]:
 
     parser = configparser.ConfigParser()
     parser.read(config_file)
+
+    if profile == parser.default_section:
+        return dict(parser.defaults())
 
     if not parser.has_section(profile):
         return {}
@@ -87,8 +108,8 @@ def _write_generated_oci_config(project_root: Path, profile: str) -> Path | None
 
 def load_settings() -> Settings:
     package_file = Path(__file__).resolve()
-    apps_root = package_file.parents[3]
-    project_root = package_file.parents[4]
+    project_root = _find_project_root(package_file)
+    apps_root = project_root / "apps" if (project_root / "apps").is_dir() else project_root
     _load_env_file(project_root / ".env")
     default_oci_cli = project_root / ".venv" / "bin" / "oci"
     oci_profile = os.getenv("OCI_PROFILE", "DEFAULT")
@@ -96,7 +117,7 @@ def load_settings() -> Settings:
     generated_oci_config = configured_oci_config if configured_oci_config.is_file() else _write_generated_oci_config(project_root, oci_profile)
     oci_config_file = generated_oci_config or configured_oci_config
     oci_profile_values = _read_oci_profile(oci_config_file, oci_profile)
-    key_file_value = os.getenv("OCI_KEY_FILE", oci_profile_values.get("key_file", ""))
+    key_file_value = oci_profile_values.get("key_file") or os.getenv("OCI_KEY_FILE", "")
 
     return Settings(
         app_name=os.getenv("APP_NAME", "oci-cost-optimizer-backend"),
