@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OCI Cost Optimizer Mock</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand-mark">OC</div>
+        <div class="title-block">
+          <h1>OCI Cost Optimizer</h1>
+          <p>AI-assisted FinOps · tenancy <strong id="tenancy">loading</strong> · <span id="period">last 30 days</span></p>
+        </div>
+        <span id="mode" class="mode">Mock</span>
+        <form id="filters" class="filters">
+          <select id="region" aria-label="Region"></select>
+          <select id="service" aria-label="Service"></select>
+          <button type="button" id="export">Export CSV</button>
+        </form>
+      </header>
+
+      <section id="setupBanner" class="setup-banner" hidden></section>
+
+      <section id="kpis" class="kpi-grid" aria-label="Cost summary"></section>
+
+      <section class="main-grid">
+        <article class="panel chart-panel">
+          <div class="panel-header">
+            <h2>Daily Spend And Forecast</h2>
+            <span>USD · actual plus mock projection</span>
+          </div>
+          <canvas id="trendChart" height="120"></canvas>
+        </article>
+        <article class="panel chart-panel">
+          <div class="panel-header">
+            <h2>Spend By Service</h2>
+            <span>current filter</span>
+          </div>
+          <canvas id="serviceChart" height="120"></canvas>
+        </article>
+      </section>
+
+      <section class="main-grid">
+        <article class="panel">
+          <div class="panel-header">
+            <h2>AI Savings Recommendations</h2>
+            <span id="recommendationHint">loading</span>
+          </div>
+          <div id="recommendations" class="recommendations"></div>
+        </article>
+        <article class="panel copilot-panel">
+          <div class="panel-header">
+            <h2>Cost Copilot</h2>
+            <span>mock answers over fixture data</span>
+          </div>
+          <div id="chat" class="chat"></div>
+          <div id="suggestions" class="suggestions"></div>
+          <form id="copilotForm" class="chat-form">
+            <input id="question" placeholder="Ask about savings, forecast, compute, storage..." autocomplete="off" />
+            <button type="submit">Send</button>
+          </form>
+        </article>
+      </section>
+
+      <section class="bottom-grid">
+        <article class="panel chart-panel">
+          <div class="panel-header">
+            <h2>Spend By Compartment</h2>
+          </div>
+          <canvas id="compartmentChart" height="150"></canvas>
+        </article>
+        <article class="panel resource-panel">
+          <div class="panel-header">
+            <h2>Top Resources By Cost</h2>
+            <span>flagged rows have open findings</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Resource</th>
+                  <th>Service</th>
+                  <th>Region</th>
+                  <th>Shape</th>
+                  <th>Utilization</th>
+                  <th class="num">Monthly</th>
+                </tr>
+              </thead>
+              <tbody id="resources"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

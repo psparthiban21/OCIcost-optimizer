@@ -1,0 +1,37 @@
+services:
+  oci-cost-optimizer:
+    build:
+      context: .
+      dockerfile: apps/backend-api/Dockerfile
+    image: oci-cost-optimizer/backend-api:local
+    container_name: oci-cost-optimizer
+    ports:
+      - "8080:8080"
+    environment:
+      APP_MODE: ${APP_MODE:-mock}
+      DATA_PROVIDER: ${DATA_PROVIDER:-mock}
+      HOST: 0.0.0.0
+      PORT: 8080
+      OCI_TENANCY_OCID: ${OCI_TENANCY_OCID:-}
+      OCI_USER_OCID: ${OCI_USER_OCID:-}
+      OCI_FINGERPRINT: ${OCI_FINGERPRINT:-}
+      OCI_REGION: ${OCI_REGION:-}
+      OCI_KEY_FILE: ${OCI_KEY_FILE:-}
+      OCI_CLI_PATH: oci
+      OCI_CONFIG_FILE: /oci/config
+      OCI_PROFILE: ${OCI_PROFILE:-DEFAULT}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+    volumes:
+      - ./.oci:/oci:ro
+    mem_limit: 2g
+    cpus: 1.0
+    pids_limit: 256
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=2).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

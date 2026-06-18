@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Oracle Cloud Cost Optimizer · AI Edition</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0f17; --panel:#121826; --panel2:#0f1420; --line:#1f2a3c;
+    --txt:#e6edf6; --muted:#8a98ad; --accent:#f80000; --accent2:#ff5a36;
+    --green:#2ec27e; --amber:#f5a623; --red:#ff5d5d; --blue:#4c8dff;
+    --chip:#1a2233;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px}
+  a{color:var(--blue)}
+  .wrap{max-width:1320px;margin:0 auto;padding:20px 22px 60px}
+  header.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+  .logo{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}
+  h1{font-size:19px;margin:0;font-weight:700;letter-spacing:.2px}
+  .sub{color:var(--muted);font-size:12px}
+  .mode-pill{font-size:10.5px;padding:4px 8px;border-radius:20px;background:rgba(46,194,126,.13);color:var(--green);border:1px solid rgba(46,194,126,.35);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+  .controls{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  select,button{background:var(--chip);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:13px;cursor:pointer}
+  button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;font-weight:600}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .kpi .label{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.6px}
+  .kpi .val{font-size:23px;font-weight:700;margin-top:6px}
+  .kpi .delta{font-size:12px;margin-top:4px}
+  .up{color:var(--red)} .down{color:var(--green)}
+  .grid{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;margin-bottom:14px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+  .panel-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .panel-h h3{margin:0;font-size:14px}
+  .panel-h .hint{color:var(--muted);font-size:11.5px}
+  canvas{max-width:100%}
+  .rec{border:1px solid var(--line);border-radius:10px;padding:12px 13px;margin-bottom:10px;background:var(--panel2)}
+  .rec .r-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .badge{font-size:10.5px;padding:3px 8px;border-radius:20px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+  .b-high{background:rgba(255,93,93,.15);color:var(--red)}
+  .b-med{background:rgba(245,166,35,.15);color:var(--amber)}
+  .b-low{background:rgba(76,141,255,.15);color:var(--blue)}
+  .cat{font-size:11px;color:var(--muted);margin-left:auto}
+  .rec h4{margin:0 0 4px;font-size:13.5px}
+  .rec p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.5}
+  .rec .save{color:var(--green);font-weight:700;font-size:13px;margin-top:7px}
+  .rec .ai{margin-top:8px;font-size:12px;color:#c7d3e3;background:rgba(76,141,255,.07);border-left:2px solid var(--blue);padding:7px 10px;border-radius:4px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  td.num,th.num{text-align:right}
+  .util-bar{height:6px;border-radius:4px;background:var(--line);overflow:hidden;width:70px;display:inline-block;vertical-align:middle}
+  .util-bar>i{display:block;height:100%}
+  .pill{font-size:10.5px;padding:2px 7px;border-radius:6px;background:var(--chip);color:var(--muted)}
+  /* AI assistant */
+  .ai-panel{display:flex;flex-direction:column;height:420px}
+  .chat{flex:1;overflow-y:auto;padding-right:6px;display:flex;flex-direction:column;gap:10px}
+  .msg{max-width:88%;padding:9px 12px;border-radius:12px;font-size:12.8px;line-height:1.5;white-space:pre-wrap}
+  .msg.bot{background:var(--panel2);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:3px}
+  .msg.user{background:linear-gradient(135deg,var(--accent),var(--accent2));align-self:flex-end;border-bottom-right-radius:3px}
+  .chat-in{display:flex;gap:8px;margin-top:10px}
+  .chat-in input{flex:1;background:var(--chip);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:10px 12px;font-size:13px}
+  .sugg{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .sugg span{font-size:11.5px;background:var(--chip);border:1px solid var(--line);padding:5px 9px;border-radius:20px;cursor:pointer;color:var(--muted)}
+  .sugg span:hover{color:var(--txt);border-color:var(--blue)}
+  .footer{color:var(--muted);font-size:11.5px;margin-top:18px;text-align:center;line-height:1.6}
+  @media(max-width:980px){.kpis{grid-template-columns:repeat(2,1fr)}.grid,.grid3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">OC</div>
+    <div>
+      <h1>Oracle Cloud Cost Optimizer</h1>
+      <div class="sub">AI-assisted FinOps · tenancy <b id="tenancy">acme-prod</b> · <span id="period">last 30 days</span></div>
+    </div>
+    <div class="mode-pill" id="modePill">Mock demo mode</div>
+    <div class="controls">
+      <select id="regionSel"><option value="all">All regions</option></select>
+      <select id="catSel">
+        <option value="all">All services</option>
+        <option>Compute</option><option>Storage</option><option>Database</option><option>Networking</option>
+      </select>
+      <button class="primary" id="exportBtn">⬇ Export report</button>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid">
+    <div class="card">
+      <div class="panel-h"><h3>Daily spend & 14-day forecast</h3><span class="hint">USD · actual vs AI projection</span></div>
+      <canvas id="trendChart" height="118"></canvas>
+    </div>
+    <div class="card">
+      <div class="panel-h"><h3>Spend by service</h3><span class="hint">this period</span></div>
+      <canvas id="catChart" height="118"></canvas>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <div class="panel-h"><h3>AI savings recommendations</h3><span class="hint" id="recHint"></span></div>
+      <div id="recs"></div>
+    </div>
+    <div class="card ai-panel">
+      <div class="panel-h"><h3>💬 Cost Copilot</h3><span class="hint">ask about your spend</span></div>
+      <div class="chat" id="chat"></div>
+      <div class="sugg" id="sugg"></div>
+      <div class="chat-in">
+        <input id="chatInput" placeholder="e.g. where can I save the most?" autocomplete="off"/>
+        <button class="primary" id="sendBtn">Send</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid3">
+    <div class="card">
+      <div class="panel-h"><h3>Spend by compartment</h3></div>
+      <canvas id="compChart" height="150"></canvas>
+    </div>
+    <div class="card" style="grid-column:span 2">
+      <div class="panel-h"><h3>Top resources by cost</h3><span class="hint">flagged rows have recommendations</span></div>
+      <div style="max-height:320px;overflow:auto">
+        <table id="resTable"><thead><tr>
+          <th>Resource</th><th>Service</th><th>Region</th><th>Shape / type</th>
+          <th>Utilization</th><th class="num">Monthly $</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    Mock OCI data generated client-side for demonstration. The recommendation engine and Cost Copilot run entirely in-browser
+    (rule-based detectors + AI-written explanations). To connect real data, point the loader at the OCI Usage &amp; Cost APIs and
+    wire <code>askCopilot()</code> to an LLM endpoint. No data leaves this page.
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   0. DEMO FALLBACK CONFIG
+
+   Keep this file self-contained. It is the fallback dashboard for
+   demos when Minikube, backend APIs, OCI credentials, or the LLM
+   endpoint are unavailable.
+
+   Future API-backed work should add a separate mode instead of
+   deleting this mock path.
+   ============================================================ */
+const APP_CONFIG={
+  mode:"mock",
+  tenancy:"acme-prod",
+  period:"last 30 days",
+  apiBaseUrl:null,
+  llmProvider:"browser-mock"
+};
+
+document.getElementById("tenancy").textContent=APP_CONFIG.tenancy;
+document.getElementById("period").textContent=APP_CONFIG.period;
+document.getElementById("modePill").textContent=APP_CONFIG.mode==="mock"?"Mock demo mode":"Live API mode";
+
+/* ============================================================
+   1. REALISTIC OCI MOCK DATA (deterministic)
+   ============================================================ */
+function rng(seed){return function(){seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;}}
+const R=rng(424242);
+const regions=["us-ashburn-1","us-phoenix-1","eu-frankfurt-1","ap-mumbai-1"];
+const compartments=["prod-app","data-platform","analytics","dev-sandbox","shared-network"];
+const fmt=n=>"$"+Math.round(n).toLocaleString();
+const fmt2=n=>"$"+n.toLocaleString(undefined,{maximumFractionDigits:0});
+
+const shapes={
+  Compute:["VM.Standard.E4.Flex","VM.Standard3.Flex","VM.Optimized3.Flex","BM.Standard.E4.128","VM.Standard.A1.Flex"],
+  Storage:["Block Volume","Object Storage","Boot Volume","File Storage","Archive Storage"],
+  Database:["Autonomous DB (ATP)","Autonomous DB (ADW)","Base DB VM.Standard2","Exadata DB","MySQL HeatWave"],
+  Networking:["Flexible Load Balancer","NAT Gateway","Data Egress","Reserved Public IP","FastConnect"]
+};
+
+let RES=[];
+let id=1;
+function mk(cat,n){
+  for(let i=0;i<n;i++){
+    const shape=shapes[cat][Math.floor(R()*shapes[cat].length)];
+    const region=regions[Math.floor(R()*regions.length)];
+    const comp=compartments[Math.floor(R()*compartments.length)];
+    let cost,util,status="running",attached=true,prov=null;
+    if(cat==="Compute"){cost=120+R()*2400;util=Math.round(R()*100);}
+    else if(cat==="Storage"){cost=15+R()*900;util=Math.round(R()*100);attached=R()>0.22;}
+    else if(cat==="Database"){cost=300+R()*5200;util=Math.round(R()*100);prov={ocpu:Math.ceil(2+R()*30)};}
+    else {cost=20+R()*1600;util=Math.round(R()*100);}
+    RES.push({id:"ocid1."+cat.toLowerCase()+"."+(id++),
+      name:cat.slice(0,3).toLowerCase()+"-"+comp.split("-")[0]+"-"+(100+Math.floor(R()*899)),
+      cat,shape,region,comp,monthly:cost,util,status,attached,prov});
+  }
+}
+mk("Compute",26);mk("Storage",22);mk("Database",9);mk("Networking",14);
+
+const totalMonthly=RES.reduce((s,r)=>s+r.monthly,0);
+
+/* daily series last 30d with weekend dips + slight upward drift */
+const days=30, today=new Date();
+let daily=[];
+for(let d=days-1;d>=0;d--){
+  const date=new Date(today);date.setDate(today.getDate()-d);
+  const dow=date.getDay();
+  const weekend=(dow===0||dow===6)?0.82:1;
+  const drift=1+(days-d)*0.004;
+  const noise=0.92+R()*0.16;
+  daily.push({date,cost:(totalMonthly/30)*weekend*drift*noise});
+}
+/* forecast next 14d via simple linear regression on last 14d */
+function forecast(series,n){
+  const last=series.slice(-14);
+  const xs=last.map((_,i)=>i), ys=last.map(p=>p.cost);
+  const mx=xs.reduce((a,b)=>a+b)/xs.length, my=ys.reduce((a,b)=>a+b)/ys.length;
+  let num=0,den=0;xs.forEach((x,i)=>{num+=(x-mx)*(ys[i]-my);den+=(x-mx)**2;});
+  const slope=num/den, inter=my-slope*mx;
+  let out=[];for(let i=0;i<n;i++){out.push(inter+slope*(last.length+i));}
+  return out;
+}
+const fc=forecast(daily,14);
+const projMonth=daily.reduce((s,p)=>s+p.cost,0)/30*30; // current run rate
+const projNext=fc.reduce((a,b)=>a+b,0)+daily.slice(-16).reduce((s,p)=>s+p.cost,0);
+
+/* ============================================================
+   2. RECOMMENDATION ENGINE (rule-based + AI explanations)
+   ============================================================ */
+function recsFor(res){
+  let out=[];
+  res.forEach(r=>{
+    // Idle / underutilized compute
+    if(r.cat==="Compute"&&r.util<15){
+      const save=r.monthly*0.95;
+      out.push({sev:"high",cat:"Compute",res:r,save,
+        title:`Idle instance: ${r.name}`,
+        body:`${r.shape} in ${r.region} averaging ${r.util}% CPU over 30 days.`,
+        ai:`This VM is effectively idle. Schedule auto-stop outside business hours or terminate it. Stopping it nightly + weekends typically recovers ~95% of its cost. Confirm no batch jobs depend on it before deletion.`});
+    } else if(r.cat==="Compute"&&r.util<40){
+      const save=r.monthly*0.45;
+      out.push({sev:"med",cat:"Compute",res:r,save,
+        title:`Oversized shape: ${r.name}`,
+        body:`${r.shape} running at ${r.util}% utilization — provisioned for peak that rarely occurs.`,
+        ai:`Right-size by reducing flex OCPUs/memory ~50%, or move to a smaller shape. Flex shapes let you scale OCPUs without rebuilding. Validate p95 utilization before applying.`});
+    }
+    // Unattached storage
+    if(r.cat==="Storage"&&!r.attached){
+      const save=r.monthly;
+      out.push({sev:"high",cat:"Storage",res:r,save,
+        title:`Unattached volume: ${r.name}`,
+        body:`${r.shape} in ${r.region} not attached to any instance for 30+ days.`,
+        ai:`Orphaned storage bills at full rate. Snapshot to Object/Archive Storage for retention, then delete the block volume to eliminate the charge entirely.`});
+    } else if(r.cat==="Storage"&&r.shape==="Block Volume"&&r.util<30){
+      const save=r.monthly*0.3;
+      out.push({sev:"low",cat:"Storage",res:r,save,
+        title:`Over-provisioned volume: ${r.name}`,
+        body:`Only ${r.util}% of provisioned capacity used.`,
+        ai:`Lower the performance tier (Balanced → Lower Cost) or shrink the volume. For infrequently accessed data, lifecycle rules to Archive cut cost ~70%.`});
+    }
+    // Database scaling
+    if(r.cat==="Database"&&r.util<35&&r.shape.includes("Autonomous")){
+      const save=r.monthly*0.4;
+      out.push({sev:"med",cat:"Database",res:r,save,
+        title:`Enable auto-scaling: ${r.name}`,
+        body:`${r.prov.ocpu} OCPU Autonomous DB at ${r.util}% avg load.`,
+        ai:`Turn on Autonomous auto-scaling and lower the baseline OCPU count. Auto-scaling bursts to 3x only when needed, so you pay the low baseline most of the time. Enable auto-stop for the dev copy.`});
+    } else if(r.cat==="Database"&&r.util<35){
+      const save=r.monthly*0.35;
+      out.push({sev:"med",cat:"Database",res:r,save,
+        title:`Right-size DB: ${r.name}`,
+        body:`${r.shape} at ${r.util}% utilization.`,
+        ai:`Scale down OCPUs during off-peak via scheduled scaling, and review BYOL licensing — switching eligible workloads to BYOL can cut the license portion significantly.`});
+    }
+    // Networking
+    if(r.cat==="Networking"&&r.shape==="Flexible Load Balancer"&&r.util<20){
+      const save=r.monthly*0.6;
+      out.push({sev:"low",cat:"Networking",res:r,save,
+        title:`Idle load balancer: ${r.name}`,
+        body:`LB at ${r.util}% bandwidth utilization.`,
+        ai:`Reduce the minimum bandwidth setting or consolidate onto a shared LB with host-based routing. Idle LBs still bill for reserved bandwidth.`});
+    } else if(r.cat==="Networking"&&r.shape==="Data Egress"&&r.monthly>800){
+      const save=r.monthly*0.25;
+      out.push({sev:"med",cat:"Networking",res:r,save,
+        title:`High egress cost: ${r.name}`,
+        body:`Cross-region/internet egress of ${fmt(r.monthly)}/mo.`,
+        ai:`Co-locate chatty services in one region, enable a CDN for static assets, and use OCI Object Storage pre-authenticated requests over a private endpoint to avoid egress charges.`});
+    } else if(r.cat==="Networking"&&r.shape==="Reserved Public IP"&&r.util<5){
+      const save=r.monthly;
+      out.push({sev:"low",cat:"Networking",res:r,save,
+        title:`Unused reserved IP: ${r.name}`,
+        body:`Reserved public IP not bound to an active resource.`,
+        ai:`Release the reserved public IP. Reserved IPs bill even when unattached; ephemeral IPs are free while attached.`});
+    }
+  });
+  // commitment recommendation (account-level)
+  const onDemandCompute=res.filter(r=>r.cat==="Compute").reduce((s,r)=>s+r.monthly,0);
+  if(onDemandCompute>4000){
+    out.push({sev:"high",cat:"Compute",res:null,save:onDemandCompute*0.28,
+      title:"Adopt a Universal Credits commitment",
+      body:`${fmt(onDemandCompute)}/mo of steady on-demand compute with no commitment discount.`,
+      ai:`Your baseline compute is stable enough to benefit from an annual/3-year Universal Credits commitment, which discounts pay-as-you-go rates ~25–30%. Commit to the steady baseline only and keep bursty workloads on-demand.`});
+  }
+  return out.sort((a,b)=>b.save-a.save);
+}
+
+/* ============================================================
+   3. RENDER
+   ============================================================ */
+let charts={};
+function activeRes(){
+  const c=document.getElementById("catSel").value, rg=document.getElementById("regionSel").value;
+  return RES.filter(r=>(c==="all"||r.cat===c)&&(rg==="all"||r.region===rg));
+}
+
+function renderKPIs(){
+  const res=activeRes();
+  const monthly=res.reduce((s,r)=>s+r.monthly,0);
+  const recs=recsFor(res);
+  const savings=recs.reduce((s,r)=>s+r.save,0);
+  const prevMonth=monthly/ (1+0.061); // implied prior month for MoM
+  const mom=((monthly-prevMonth)/prevMonth*100);
+  const k=[
+    {label:"Current run rate",val:fmt2(monthly),delta:`${mom>=0?"▲":"▼"} ${Math.abs(mom).toFixed(1)}% MoM`,cls:mom>=0?"up":"down"},
+    {label:"Projected next month",val:fmt2(monthly*1.04),delta:"AI forecast",cls:""},
+    {label:"Identified savings",val:fmt2(savings),delta:`${(savings/monthly*100).toFixed(0)}% of spend`,cls:"down"},
+    {label:"Optimized run rate",val:fmt2(monthly-savings),delta:"if all applied",cls:"down"},
+    {label:"Open recommendations",val:recs.length,delta:`${recs.filter(r=>r.sev==="high").length} high impact`,cls:""}
+  ];
+  document.getElementById("kpis").innerHTML=k.map(x=>
+    `<div class="card kpi"><div class="label">${x.label}</div><div class="val">${x.val}</div><div class="delta ${x.cls}">${x.delta}</div></div>`).join("");
+}
+
+function renderTrend(){
+  const labels=daily.map(p=>p.date.toLocaleDateString(undefined,{month:"short",day:"numeric"}));
+  const fcLabels=[];for(let i=1;i<=14;i++){const d=new Date(today);d.setDate(today.getDate()+i);fcLabels.push(d.toLocaleDateString(undefined,{month:"short",day:"numeric"}));}
+  const actual=daily.map(p=>Math.round(p.cost));
+  const fcData=Array(daily.length-1).fill(null).concat([actual[actual.length-1]],fc.map(Math.round));
+  if(charts.trend)charts.trend.destroy();
+  charts.trend=new Chart(document.getElementById("trendChart"),{
+    type:"line",
+    data:{labels:labels.concat(fcLabels),datasets:[
+      {label:"Actual",data:actual,borderColor:"#ff5a36",backgroundColor:"rgba(255,90,54,.12)",fill:true,tension:.35,pointRadius:0,borderWidth:2},
+      {label:"Forecast",data:fcData,borderColor:"#4c8dff",borderDash:[5,4],fill:false,tension:.35,pointRadius:0,borderWidth:2}
+    ]},
+    options:{plugins:{legend:{labels:{color:"#8a98ad",boxWidth:12}}},
+      scales:{x:{ticks:{color:"#5d6b80",maxTicksLimit:9},grid:{display:false}},
+              y:{ticks:{color:"#5d6b80",callback:v=>"$"+v},grid:{color:"#1b2435"}}}}});
+}
+
+function renderCat(){
+  const res=activeRes();
+  const cats=["Compute","Storage","Database","Networking"];
+  const vals=cats.map(c=>res.filter(r=>r.cat===c).reduce((s,r)=>s+r.monthly,0));
+  if(charts.cat)charts.cat.destroy();
+  charts.cat=new Chart(document.getElementById("catChart"),{
+    type:"doughnut",
+    data:{labels:cats,datasets:[{data:vals.map(Math.round),
+      backgroundColor:["#ff5a36","#4c8dff","#2ec27e","#f5a623"],borderColor:"#121826",borderWidth:2}]},
+    options:{cutout:"62%",plugins:{legend:{position:"right",labels:{color:"#c7d3e3",boxWidth:12,padding:10,
+      generateLabels:ch=>{const d=ch.data;const tot=d.datasets[0].data.reduce((a,b)=>a+b,0);
+        return d.labels.map((l,i)=>({text:`${l}  ${fmt(d.datasets[0].data[i])}`,fillStyle:d.datasets[0].backgroundColor[i],index:i}));}}}}}});
+}
+
+function renderComp(){
+  const res=activeRes();
+  const vals=compartments.map(c=>res.filter(r=>r.comp===c).reduce((s,r)=>s+r.monthly,0));
+  if(charts.comp)charts.comp.destroy();
+  charts.comp=new Chart(document.getElementById("compChart"),{
+    type:"bar",
+    data:{labels:compartments,datasets:[{data:vals.map(Math.round),backgroundColor:"#4c8dff",borderRadius:5}]},
+    options:{indexAxis:"y",plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:"#5d6b80",callback:v=>"$"+v},grid:{color:"#1b2435"}},
+              y:{ticks:{color:"#c7d3e3"},grid:{display:false}}}}});
+}
+
+function renderRecs(){
+  const recs=recsFor(activeRes());
+  const total=recs.reduce((s,r)=>s+r.save,0);
+  document.getElementById("recHint").textContent=`${recs.length} findings · ${fmt(total)}/mo potential`;
+  const sevCls={high:"b-high",med:"b-med",low:"b-low"};
+  const sevTxt={high:"High",med:"Medium",low:"Low"};
+  document.getElementById("recs").innerHTML=recs.slice(0,8).map(r=>`
+    <div class="rec">
+      <div class="r-top">
+        <span class="badge ${sevCls[r.sev]}">${sevTxt[r.sev]}</span>
+        <span class="cat">${r.cat}</span>
+      </div>
+      <h4>${r.title}</h4>
+      <p>${r.body}</p>
+      <div class="ai">🤖 ${r.ai}</div>
+      <div class="save">Est. savings ${fmt(r.save)}/mo (${fmt(r.save*12)}/yr)</div>
+    </div>`).join("");
+}
+
+function renderTable(){
+  const res=[...activeRes()].sort((a,b)=>b.monthly-a.monthly).slice(0,40);
+  const flagged=new Set(recsFor(activeRes()).filter(r=>r.res).map(r=>r.res.id));
+  const uc=u=>u<20?"#ff5d5d":u<50?"#f5a623":"#2ec27e";
+  document.querySelector("#resTable tbody").innerHTML=res.map(r=>`
+    <tr>
+      <td>${flagged.has(r.id)?"⚑ ":""}${r.name}</td>
+      <td><span class="pill">${r.cat}</span></td>
+      <td>${r.region}</td>
+      <td>${r.shape}</td>
+      <td><span class="util-bar"><i style="width:${r.util}%;background:${uc(r.util)}"></i></span> ${r.util}%</td>
+      <td class="num">${fmt(r.monthly)}</td>
+    </tr>`).join("");
+}
+
+function renderAll(){renderKPIs();renderTrend();renderCat();renderComp();renderRecs();renderTable();}
+
+/* ============================================================
+   4. COST COPILOT (in-browser AI assistant over the data)
+   ============================================================ */
+function askCopilot(q){
+  q=q.toLowerCase();
+  const res=activeRes();
+  const recs=recsFor(res);
+  const monthly=res.reduce((s,r)=>s+r.monthly,0);
+  const savings=recs.reduce((s,r)=>s+r.save,0);
+  const byCat=c=>res.filter(r=>r.cat===c).reduce((s,r)=>s+r.monthly,0);
+
+  if(/save|saving|reduce|cut|lower/.test(q)){
+    const top=recs.slice(0,3);
+    return `You can recover about ${fmt(savings)}/mo (${fmt(savings*12)}/yr) — ${(savings/monthly*100).toFixed(0)}% of current spend.\n\nBiggest wins:\n`+
+      top.map((r,i)=>`${i+1}. ${r.title} → ${fmt(r.save)}/mo`).join("\n")+
+      `\n\nStart with the high-severity items; they're mostly idle or unattached resources you can safely remove.`;
+  }
+  if(/forecast|next month|project|predict/.test(q)){
+    return `Current run rate is ${fmt(monthly)}/mo. The linear forecast over the last 14 days projects ~${fmt(monthly*1.04)} next month — a slight upward drift driven by Compute. Apply the open recommendations and you'd trend toward ${fmt(monthly-savings)}/mo instead.`;
+  }
+  if(/compute|vm|instance|cpu/.test(q)){
+    const idle=res.filter(r=>r.cat==="Compute"&&r.util<15).length;
+    return `Compute is ${fmt(byCat("Compute"))}/mo (${(byCat("Compute")/monthly*100).toFixed(0)}% of spend). I found ${idle} effectively idle instance(s) (<15% CPU) and several oversized flex shapes. Right-sizing + auto-stop schedules are the fastest levers here.`;
+  }
+  if(/storage|volume|disk|bucket/.test(q)){
+    const orphan=res.filter(r=>r.cat==="Storage"&&!r.attached).length;
+    return `Storage is ${fmt(byCat("Storage"))}/mo. ${orphan} unattached volume(s) are billing at full rate — snapshot then delete them. Also consider Archive lifecycle rules for cold data (~70% cheaper).`;
+  }
+  if(/database|db|autonomous|exadata/.test(q)){
+    return `Database is ${fmt(byCat("Database"))}/mo — usually the highest per-resource cost. Enable Autonomous auto-scaling with a lower baseline OCPU, schedule scale-down off-peak, and review BYOL licensing eligibility.`;
+  }
+  if(/network|egress|load balancer|lb|bandwidth/.test(q)){
+    return `Networking is ${fmt(byCat("Networking"))}/mo. Watch data egress and idle load balancers. Co-locating chatty services in one region and adding a CDN are the main egress reducers.`;
+  }
+  if(/region/.test(q)){
+    const byR=regions.map(rg=>[rg,res.filter(r=>r.region===rg).reduce((s,r)=>s+r.monthly,0)]).sort((a,b)=>b[1]-a[1]);
+    return `Spend by region:\n`+byR.map(([rg,v])=>`• ${rg}: ${fmt(v)}/mo`).join("\n")+`\n\n${byR[0][0]} is your largest footprint.`;
+  }
+  if(/compartment|team|department/.test(q)){
+    const byC=compartments.map(c=>[c,res.filter(r=>r.comp===c).reduce((s,r)=>s+r.monthly,0)]).sort((a,b)=>b[1]-a[1]);
+    return `Spend by compartment:\n`+byC.map(([c,v])=>`• ${c}: ${fmt(v)}/mo`).join("\n")+`\n\nConsider budget alerts on ${byC[0][0]}.`;
+  }
+  if(/total|spend|cost|how much|bill/.test(q)){
+    return `Total run rate across the current filter is ${fmt(monthly)}/mo (${fmt(monthly*12)}/yr) across ${res.length} resources. Compute ${fmt(byCat("Compute"))}, Database ${fmt(byCat("Database"))}, Storage ${fmt(byCat("Storage"))}, Networking ${fmt(byCat("Networking"))}.`;
+  }
+  if(/hi|hello|hey|help|what can you/.test(q)){
+    return `I'm your Cost Copilot. Ask me things like:\n• "Where can I save the most?"\n• "Break down spend by region"\n• "What's wrong with my compute?"\n• "Forecast next month"\nI analyze the loaded OCI data live.`;
+  }
+  return `I can answer cost questions about this tenancy — try asking about savings, a specific service (compute/storage/database/networking), spend by region or compartment, or the forecast. Current run rate is ${fmt(monthly)}/mo with ${fmt(savings)}/mo in identified savings.`;
+}
+function pushMsg(text,who){
+  const c=document.getElementById("chat");
+  const d=document.createElement("div");d.className="msg "+who;d.textContent=text;
+  c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+function send(q){
+  if(!q.trim())return;
+  pushMsg(q,"user");
+  document.getElementById("chatInput").value="";
+  setTimeout(()=>pushMsg(askCopilot(q),"bot"),250);
+}
+
+/* ============================================================
+   5. WIRE UP
+   ============================================================ */
+regions.forEach(rg=>{const o=document.createElement("option");o.value=rg;o.textContent=rg;document.getElementById("regionSel").appendChild(o);});
+document.getElementById("catSel").addEventListener("change",renderAll);
+document.getElementById("regionSel").addEventListener("change",renderAll);
+document.getElementById("sendBtn").addEventListener("click",()=>send(document.getElementById("chatInput").value));
+document.getElementById("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter")send(e.target.value);});
+document.getElementById("exportBtn").addEventListener("click",()=>{
+  const res=activeRes(),recs=recsFor(res);
+  let csv="Title,Severity,Category,Monthly Savings,Annual Savings\n"+
+    recs.map(r=>`"${r.title}",${r.sev},${r.cat},${Math.round(r.save)},${Math.round(r.save*12)}`).join("\n");
+  const a=document.createElement("a");a.href="data:text/csv,"+encodeURIComponent(csv);a.download="oci-savings-report.csv";a.click();
+});
+const suggestions=["Where can I save the most?","Forecast next month","Spend by region","What's wrong with my compute?"];
+document.getElementById("sugg").innerHTML=suggestions.map(s=>`<span>${s}</span>`).join("");
+document.querySelectorAll("#sugg span").forEach(s=>s.addEventListener("click",()=>send(s.textContent)));
+
+renderAll();
+pushMsg("Hi! I've analyzed your OCI tenancy. You're spending "+fmt(totalMonthly)+"/mo and I found "+fmt(recsFor(RES).reduce((s,r)=>s+r.save,0))+"/mo in potential savings. Ask me anything.","bot");
+</script>
+</body>
+</html>
