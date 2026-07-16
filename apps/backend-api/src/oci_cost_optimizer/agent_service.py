@@ -85,6 +85,7 @@ class AgentHandler(BaseHTTPRequestHandler):
         return (
             "You are an OCI FinOps assistant. Use only the provided cost data. "
             "Do not claim that resources were changed. Do not recommend automatic deletion. "
+            "Always state that the dashboard is read-only and will not change OCI resources automatically. "
             "Follow the connection status exactly; do not say connected when the status says not available. "
             "Keep the answer under 180 words and include practical next steps.\n\n"
             f"Connection status: {connection_status}\n"

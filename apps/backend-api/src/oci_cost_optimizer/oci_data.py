@@ -411,11 +411,13 @@ def answer_oci_copilot(question: str, filters: dict[str, str] | None, settings: 
     if cost_status == "available":
         return (
             f"OCI live mode is connected to {data['meta']['tenancy']}. "
-            f"I found {resource_count} visible resources and ${round(run_rate):,} in cost for {data['meta']['period']}."
+            f"I found {resource_count} visible resources and ${round(run_rate):,} in cost for {data['meta']['period']}. "
+            "This dashboard is read-only and will not change OCI resources automatically."
         )
 
     return (
         f"OCI live mode is connected to {data['meta']['tenancy']} and found {resource_count} visible resources. "
         "The Usage API returned no cost rows for the selected period, so savings estimates are not available yet. "
-        "Check billing permissions and whether this tenancy has generated usage in the date range."
+        "Check billing permissions and whether this tenancy has generated usage in the date range. "
+        "This dashboard is read-only and will not change OCI resources automatically."
     )

@@ -47,6 +47,7 @@ class AgentServiceTest(unittest.TestCase):
         self.assertIn("Use only the provided cost data", prompt)
         self.assertIn("Do not claim that resources were changed", prompt)
         self.assertIn("Do not recommend automatic deletion", prompt)
+        self.assertIn("dashboard is read-only", prompt)
         self.assertIn("identified_savings", prompt)
 
 

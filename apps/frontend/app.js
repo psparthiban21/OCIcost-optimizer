@@ -75,6 +75,7 @@ function renderHeader(data) {
   document.querySelector("#tenancy").textContent = data.meta.tenancy;
   document.querySelector("#period").textContent = data.meta.period;
   document.querySelector("#mode").textContent = `${data.meta.mode} mode`;
+  document.title = `OCI Cost Optimizer · ${data.meta.mode}`;
   setSelectOptions(document.querySelector("#region"), data.meta.regions, "All regions");
   setSelectOptions(document.querySelector("#service"), data.meta.services, "All services");
 }
@@ -253,7 +254,8 @@ function severityLabel(severity) {
 
 function renderRecommendations(data) {
   const recommendations = data.recommendations.slice(0, 8);
-  document.querySelector("#recommendationHint").textContent = `${data.recommendations.length} findings · ${fmt(data.summary.identifiedSavings)}/mo potential`;
+  const findingLabel = data.recommendations.length === 1 ? "finding" : "findings";
+  document.querySelector("#recommendationHint").textContent = `${data.recommendations.length} ${findingLabel} · ${fmt(data.summary.identifiedSavings)}/mo potential`;
   document.querySelector("#recommendations").innerHTML = recommendations
     .map((rec) => `
       <article class="rec">
@@ -345,7 +347,7 @@ function exportCsv() {
   const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
   const link = document.createElement("a");
   link.href = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
-  link.download = "oci-cost-optimizer-mock-recommendations.csv";
+  link.download = "oci-cost-optimizer-recommendations.csv";
   link.click();
 }
 

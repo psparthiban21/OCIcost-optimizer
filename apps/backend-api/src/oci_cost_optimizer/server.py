@@ -268,7 +268,11 @@ class ApiHandler(BaseHTTPRequestHandler):
     def _dashboard_payload(self, filters: dict[str, str]) -> dict[str, object]:
         if self.settings.analytics_service_url:
             try:
-                return get_json(f"{self.settings.analytics_service_url}/internal/v1/dashboard", filters)
+                return get_json(
+                    f"{self.settings.analytics_service_url}/internal/v1/dashboard",
+                    filters,
+                    timeout=15.0,
+                )
             except ServiceCallError as error:
                 log_event("analytics_service_fallback", reason=str(error))
 
@@ -326,7 +330,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                 response = post_json(
                     f"{self.settings.agent_service_url}/internal/v1/copilot",
                     {"question": question, "filters": filters},
-                    timeout=30.0,
+                    timeout=60.0,
                 )
                 return str(response.get("answer", ""))
             except ServiceCallError as error:

@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="8" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.6"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .title { font: 700 42px Arial, sans-serif; fill: #172033; }
+      .subtitle { font: 22px Arial, sans-serif; fill: #526179; }
+      .layer { font: 700 16px Arial, sans-serif; fill: #64748b; letter-spacing: 1px; }
+      .box-title { font: 700 23px Arial, sans-serif; fill: #172033; }
+      .box-copy { font: 17px Arial, sans-serif; fill: #334155; }
+      .small { font: 15px Arial, sans-serif; fill: #526179; }
+      .flow { fill: none; stroke: #334155; stroke-width: 4; stroke-linecap: round; marker-end: url(#arrow); }
+      .feedback { fill: none; stroke: #2f855a; stroke-width: 4; stroke-dasharray: 10 9; stroke-linecap: round; marker-end: url(#arrow); }
+      .box { stroke: #334155; stroke-width: 3; rx: 18; filter: url(#rough); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#fbfcfe"/>
+  <path d="M55 92 C400 80 790 104 1545 88" stroke="#f97316" stroke-width="5" fill="none" stroke-linecap="round" filter="url(#rough)"/>
+  <text x="60" y="55" class="title">OCI COST OPTIMIZER AI</text>
+  <text x="60" y="125" class="subtitle">Observe cost and inventory - reason locally - recommend safely - never mutate OCI resources</text>
+
+  <text x="70" y="185" class="layer">EXPERIENCE</text>
+  <rect class="box" x="70" y="215" width="250" height="170" fill="#dbeafe"/>
+  <text x="95" y="258" class="box-title">FinOps Dashboard</text>
+  <text x="95" y="295" class="box-copy">Cost KPIs and forecast</text>
+  <text x="95" y="325" class="box-copy">Savings recommendations</text>
+  <text x="95" y="355" class="box-copy">Cost Copilot and CSV</text>
+
+  <text x="390" y="185" class="layer">ORCHESTRATION</text>
+  <rect class="box" x="390" y="215" width="250" height="170" fill="#ffedd5"/>
+  <text x="415" y="258" class="box-title">Backend API</text>
+  <text x="415" y="295" class="box-copy">Public /api/v1 contract</text>
+  <text x="415" y="325" class="box-copy">Filters and validation</text>
+  <text x="415" y="355" class="box-copy">Read-only guardrails</text>
+
+  <text x="710" y="185" class="layer">MICROSERVICES</text>
+  <rect class="box" x="710" y="200" width="260" height="135" fill="#ede9fe"/>
+  <text x="735" y="242" class="box-title">Analytics Engine</text>
+  <text x="735" y="278" class="box-copy">Usage, inventory, trends</text>
+  <text x="735" y="307" class="box-copy">Evidence-bound findings</text>
+
+  <rect class="box" x="710" y="365" width="260" height="135" fill="#ede9fe"/>
+  <text x="735" y="407" class="box-title">Agent Service</text>
+  <text x="735" y="443" class="box-copy">Grounded prompt builder</text>
+  <text x="735" y="472" class="box-copy">Read-only safety statement</text>
+
+  <text x="1040" y="185" class="layer">PROVIDERS</text>
+  <rect class="box" x="1040" y="200" width="255" height="135" fill="#e5e7eb"/>
+  <text x="1065" y="242" class="box-title">OCI Read APIs</text>
+  <text x="1065" y="278" class="box-copy">Usage API and Search</text>
+  <text x="1065" y="307" class="box-copy">IAM list/get only</text>
+
+  <rect class="box" x="1040" y="365" width="255" height="135" fill="#e5e7eb"/>
+  <text x="1065" y="407" class="box-title">Local Ollama</text>
+  <text x="1065" y="443" class="box-copy">llama3.2:3b</text>
+  <text x="1065" y="472" class="box-copy">No cloud LLM key needed</text>
+
+  <path class="flow" d="M320 300 C345 300 365 300 390 300"/>
+  <path class="flow" d="M640 270 C670 260 680 260 710 260"/>
+  <path class="flow" d="M640 330 C680 355 680 420 710 430"/>
+  <path class="flow" d="M970 267 C995 267 1015 267 1040 267"/>
+  <path class="flow" d="M970 432 C995 432 1015 432 1040 432"/>
+  <path class="flow" d="M840 335 C840 345 840 355 840 365"/>
+
+  <text x="70" y="575" class="layer">TARGET STATE: CACHE, STATE, AND OPERATIONS</text>
+  <rect class="box" x="70" y="610" width="300" height="135" fill="#dcfce7" stroke-dasharray="10 8"/>
+  <text x="95" y="651" class="box-title">Redis Cache</text>
+  <text x="95" y="687" class="box-copy">Short-lived query results</text>
+  <text x="95" y="716" class="small">Planned - bounded TTL and memory</text>
+
+  <rect class="box" x="420" y="610" width="300" height="135" fill="#dcfce7" stroke-dasharray="10 8"/>
+  <text x="445" y="651" class="box-title">PostgreSQL State</text>
+  <text x="445" y="687" class="box-copy">Recommendation lifecycle</text>
+  <text x="445" y="716" class="small">Planned - audit and approval state</text>
+
+  <rect class="box" x="770" y="610" width="300" height="135" fill="#dcfce7" stroke-dasharray="10 8"/>
+  <text x="795" y="651" class="box-title">Observability</text>
+  <text x="795" y="687" class="box-copy">Logs, metrics, traces</text>
+  <text x="795" y="716" class="small">Planned - SLOs and alerting</text>
+
+  <rect class="box" x="1120" y="610" width="405" height="135" fill="#fee2e2"/>
+  <text x="1145" y="651" class="box-title">Safety Boundary</text>
+  <text x="1145" y="687" class="box-copy">No delete, stop, resize, or update calls</text>
+  <text x="1145" y="716" class="small">Human review before any future automation</text>
+
+  <path class="feedback" d="M1120 678 C1010 795 595 810 320 380"/>
+  <text x="725" y="820" class="small">Feedback loop: validate recommendation quality, tune rules, improve evidence</text>
+
+  <rect x="70" y="850" width="18" height="18" rx="4" fill="#dbeafe" stroke="#334155"/>
+  <text x="98" y="865" class="small">Experience</text>
+  <rect x="225" y="850" width="18" height="18" rx="4" fill="#ffedd5" stroke="#334155"/>
+  <text x="253" y="865" class="small">Processing</text>
+  <rect x="390" y="850" width="18" height="18" rx="4" fill="#ede9fe" stroke="#334155"/>
+  <text x="418" y="865" class="small">Services</text>
+  <rect x="540" y="850" width="18" height="18" rx="4" fill="#dcfce7" stroke="#334155"/>
+  <text x="568" y="865" class="small">Monitoring and planned state</text>
+  <rect x="850" y="850" width="18" height="18" rx="4" fill="#fee2e2" stroke="#334155"/>
+  <text x="878" y="865" class="small">Safety boundary</text>
+</svg>

@@ -1,109 +1,238 @@
-# OCI Cost Optimizer AI Recommendation
+# OCI Cost Optimizer AI
 
-Enterprise-grade OCI cost optimization with a local k3d/Podman microservice architecture, pluggable OCI data providers, and AI-assisted recommendations.
+Read-only OCI FinOps dashboard with live cost and inventory collection, evidence-backed savings recommendations, and a local Ollama Cost Copilot.
 
-The repository includes a working `backend-api`, static frontend assets, an `analytics-engine` service entrypoint, and an `agent-service` entrypoint. Local AI assistance uses Ollama by default in k3d mode, with deterministic mock fallback when Ollama is unavailable.
+> **Safety contract:** the current application uses OCI read operations only. It does not delete, stop, resize, update, or otherwise mutate OCI resources.
 
-Architecture docs:
+![OCI Cost Optimizer live dashboard](docs/assets/oci-cost-optimizer-product-demo.png)
 
-- [OCI Cloud Replica Architecture](docs/oci-cloud-replica-architecture.md)
-- [Architecture](docs/architecture.md)
-- [Principal Architecture Blueprint](docs/principal-architecture-blueprint.md)
-- [Minikube Deployment Plan](docs/minikube-deployment-plan.md)
-- [Architecture Decision Records](docs/adr)
+## What It Does
+
+- Connects to OCI Usage API, Resource Search, and IAM read endpoints.
+- Shows cost KPIs, daily trend, service and compartment views, and visible resources.
+- Generates prioritized, evidence-bound savings recommendations.
+- Grounds Cost Copilot answers in the current dashboard context.
+- Uses local Ollama by default for AI assistance; no cloud LLM key is required.
+- Preserves deterministic mock mode as a demo fallback when live infrastructure is unavailable.
+- Exports the current recommendation set as CSV.
+
+## Current Status
+
+| Capability | Status |
+| --- | --- |
+| Static responsive dashboard | Implemented |
+| Strict live OCI mode | Implemented and tested |
+| OCI Usage API through Python SDK | Implemented |
+| OCI resource discovery through OCI CLI | Implemented |
+| Analytics microservice | Implemented |
+| Ollama agent microservice | Implemented |
+| Read-only safety checks | Implemented and tested |
+| Redis cache | Target state; not implemented |
+| PostgreSQL recommendation state | Target state; not implemented |
+| Authentication, RBAC, audit store, TLS ingress | Required before production exposure |
+
+The repository is suitable for local engineering, demonstrations, and controlled read-only OCI evaluation. Complete the production checklist below before exposing it to enterprise users.
 
 ## Architecture
 
+![OCI Cost Optimizer architecture](docs/assets/oci-cost-optimizer-architecture.svg)
+
 ```text
-User or frontend
-  -> backend-api
-  -> ingestion-service
-  -> analytics-engine
-  -> recommendation-orchestrator
-  -> agent-service
-  -> OCI APIs and LLM providers
+Browser
+  -> backend-api (/api/v1)
+     -> analytics-engine
+        -> OCI Usage API, Resource Search, IAM list/get
+     -> agent-service
+        -> local Ollama (llama3.2:3b)
 ```
 
-| Service | Responsibility | Status |
+Solid paths are implemented. Redis, PostgreSQL, durable audit state, and full observability are documented target-state capabilities.
+
+Detailed references:
+
+- [Product architecture](docs/oci-cost-optimizer-product-architecture.md)
+- [Principal architecture blueprint](docs/principal-architecture-blueprint.md)
+- [OCI cloud replica architecture](docs/oci-cloud-replica-architecture.md)
+- [Minikube deployment plan](docs/minikube-deployment-plan.md)
+- [Architecture decision records](docs/adr)
+
+## Requirements
+
+### Minimum Local Requirements
+
+| Tool | Purpose | Recommended baseline |
 | --- | --- | --- |
-| `backend-api` | Public REST API, frontend serving, request orchestration | Implemented |
-| `frontend` | Browser UI for setup, dashboard, recommendations, and Copilot | Implemented as static assets |
-| `ingestion-service` | OCI cost, usage, inventory, and metric ingestion | Planned |
-| `analytics-engine` | Aggregations, forecasts, spend trends, anomaly signals | Implemented as microservice entrypoint |
-| `recommendation-orchestrator` | Recommendation rules and AI workflow coordination | Planned |
-| `agent-service` | Ollama-backed Copilot, prediction, and suggestion service | Implemented as microservice entrypoint |
+| macOS on Apple Silicon or Intel | Local workstation | Current supported macOS |
+| Python | Backend and tests | 3.11 or later |
+| OCI CLI | OCI read calls and profile validation | Current stable release |
+| Ollama | Local AI inference | Current stable release |
+| `llama3.2:3b` | Memory-conscious local model | Installed through Ollama |
+| Git | Source control | Current stable release |
 
-Public clients should call only `backend-api`. Internal services should communicate through cluster-private Kubernetes services.
+### k3d and Podman Requirements
 
-## Repository Layout
+- Podman Desktop or Podman machine running.
+- `podman`, `k3d`, and `kubectl` available on `PATH`.
+- At least 4 GB free memory for the cluster, services, and local Ollama.
+- Port `8080` available for the backend port-forward.
+- Port `11434` available for Ollama.
 
-```text
-apps/
-  backend-api/                  # Public API service
-  frontend/                     # Static frontend served by backend-api
-  ingestion-service/            # Planned microservice
-  analytics-engine/             # Planned microservice
-  recommendation-orchestrator/  # Planned microservice
-  agent-service/                # Planned microservice
-k8s/
-  base/backend-api.yaml         # Current Minikube-ready backend deployment
-infra/
-  terraform/oci/                # OCI API Gateway, Functions, IAM, and network scaffold
-config/                         # Local configuration files
-fixtures/                       # Mock/local data inputs
-scripts/                        # Utility scripts
-```
-
-## Quick Start
-
-### Local Python
+Install common macOS dependencies:
 
 ```bash
-cd apps/backend-api
-PYTHONPATH=src python3 -m oci_cost_optimizer
+brew install python oci-cli ollama podman k3d kubectl
 ```
 
-Open:
+## Secure Configuration
 
-```text
-http://127.0.0.1:4310
-```
+Never commit `.env`, `.oci/`, PEM files, passwords, tokens, or API keys. They are ignored by Git and checked by `scripts/security_scan.py`.
 
-### Docker Compose
+Create local files from the safe examples:
 
 ```bash
-docker compose up --build
+cp .env.example .env
+mkdir -p .oci
+chmod 700 .oci
 ```
 
-Open:
+Use an OCI API-signing key dedicated to this application. Store the private key at `.oci/oci_api_key.pem` with mode `600`:
 
-```text
-http://127.0.0.1:8080
+```bash
+chmod 600 .oci/oci_api_key.pem
+chmod 600 .oci/config
 ```
 
-### k3d With Podman And Ollama
+Example `.oci/config` structure:
 
-Start Ollama on your Mac first:
+```ini
+[DEFAULT]
+user=<user-ocid>
+fingerprint=<api-key-fingerprint>
+tenancy=<tenancy-ocid>
+region=ap-mumbai-1
+key_file=/absolute/path/to/.oci/oci_api_key.pem
+```
+
+Set strict live mode in `.env`:
+
+```dotenv
+APP_MODE=oci
+DATA_PROVIDER=oci
+OCI_ALLOW_MOCK_FALLBACK=false
+
+OCI_TENANCY_OCID=<tenancy-ocid>
+OCI_USER_OCID=<user-ocid>
+OCI_FINGERPRINT=<api-key-fingerprint>
+OCI_REGION=ap-mumbai-1
+OCI_PROFILE=DEFAULT
+OCI_CONFIG_FILE=.oci/config
+OCI_KEY_FILE=/absolute/path/to/.oci/oci_api_key.pem
+OCI_CLI_PATH=.venv/bin/oci
+
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=llama3.2:3b
+```
+
+Do not put an OpenAI key in `.env` when using Ollama.
+
+### Required OCI Permissions
+
+Grant the API-signing user or group only the read permissions needed for the selected tenancy and compartments. Validate the final policy with the OCI security owner. The application needs access equivalent to:
+
+- Read tenancy and accessible compartments.
+- Read resource inventory through Resource Search.
+- Read usage and cost data through Usage API.
+- Read regional metadata.
+
+Do not grant manage, update, delete, instance-action, or resource-family mutation permissions to the dashboard identity.
+
+## Installation
+
+Create a project virtual environment and install the OCI CLI, which includes the OCI Python SDK used by cost queries:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install oci-cli
+```
+
+Start and prepare Ollama:
 
 ```bash
 ollama serve
 ollama pull llama3.2:3b
 ```
 
-Deploy the local microservice stack:
+Verify credentials without changing resources:
 
 ```bash
+.venv/bin/oci iam tenancy get \
+  --tenancy-id <tenancy-ocid> \
+  --config-file .oci/config \
+  --profile DEFAULT \
+  --auth api_key
+```
+
+## Run Locally in Strict OCI Mode
+
+Run each service in a separate terminal from the repository root.
+
+Analytics service:
+
+```bash
+APP_MODE=oci DATA_PROVIDER=oci OCI_ALLOW_MOCK_FALLBACK=false \
+HOST=127.0.0.1 PORT=4311 PYTHONPATH=apps/backend-api/src \
+.venv/bin/python -m oci_cost_optimizer.analytics_service
+```
+
+Ollama agent service:
+
+```bash
+APP_MODE=oci DATA_PROVIDER=oci OCI_ALLOW_MOCK_FALLBACK=false \
+LLM_PROVIDER=ollama OLLAMA_BASE_URL=http://127.0.0.1:11434 \
+OLLAMA_MODEL=llama3.2:3b HOST=127.0.0.1 PORT=4312 \
+PYTHONPATH=apps/backend-api/src \
+.venv/bin/python -m oci_cost_optimizer.agent_service
+```
+
+Public backend and frontend:
+
+```bash
+APP_MODE=oci DATA_PROVIDER=oci OCI_ALLOW_MOCK_FALLBACK=false \
+LLM_PROVIDER=ollama OLLAMA_BASE_URL=http://127.0.0.1:11434 \
+OLLAMA_MODEL=llama3.2:3b \
+ANALYTICS_SERVICE_URL=http://127.0.0.1:4311 \
+AGENT_SERVICE_URL=http://127.0.0.1:4312 \
+HOST=127.0.0.1 PORT=4310 PYTHONPATH=apps/backend-api/src \
+.venv/bin/python -m oci_cost_optimizer
+```
+
+Open [http://127.0.0.1:4310](http://127.0.0.1:4310).
+
+## How to Use the Dashboard
+
+1. Confirm the green header badge says `OCI-LIVE MODE` and the expected tenancy is shown.
+2. Review current run rate, projection, identified savings, and open recommendations.
+3. Use Region and Service filters to narrow all charts, recommendations, and resources.
+4. Read each recommendation's evidence, action, confidence, and estimated monthly savings.
+5. Ask Cost Copilot a focused question such as `Where can I save the most?`.
+6. Treat Copilot output as advice for human review. The dashboard never applies a recommendation.
+7. Select **Export CSV** to share the filtered recommendation set.
+
+If the Usage API returns no billable rows, the dashboard displays zero cost and recommends validating billing permissions, date range, and usage availability. It does not invent savings estimates.
+
+## Run with k3d and Podman
+
+The checked-in k3d profile is a credential-free demo profile and defaults to mock data. It runs separate backend, analytics, and agent pods and connects the agent to Ollama on the Mac host.
+
+```bash
+podman machine start
 scripts/k3d-up.sh
 kubectl -n oci-cost-optimizer port-forward svc/backend-api 8080:80
 ```
 
-Open:
-
-```text
-http://127.0.0.1:8080
-```
-
-The k3d stack runs separate `backend-api`, `analytics-engine`, and `agent-service` pods. It uses Podman to build the image, imports the image into k3d, and configures the agent service to call Ollama at `http://host.k3d.internal:11434`.
+Open [http://127.0.0.1:8080](http://127.0.0.1:8080).
 
 Stop the stack:
 
@@ -111,140 +240,81 @@ Stop the stack:
 scripts/k3d-down.sh
 ```
 
-### Legacy Minikube
+For strict live OCI mode in Kubernetes, create a private overlay that:
+
+- Creates an `oci-credentials` Secret from the local config and private key.
+- Mounts the Secret read-only at `/oci` in backend, analytics, and agent pods.
+- Sets `APP_MODE=oci`, `DATA_PROVIDER=oci`, and `OCI_ALLOW_MOCK_FALLBACK=false`.
+- Sets `OCI_CONFIG_FILE=/oci/config`, `OCI_KEY_FILE=/oci/oci_api_key.pem`, and the intended profile.
+- Keeps Secret YAML, rendered manifests, and private overlays outside Git.
+
+Do not paste a private key into a checked-in Kubernetes manifest.
+
+## API
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/v1/health` | Liveness |
+| `GET` | `/api/v1/ready` | Dependency readiness |
+| `GET` | `/api/v1/version` | API metadata |
+| `GET` | `/api/v1/status` | Combined runtime status |
+| `GET` | `/api/v1/setup` | OCI and LLM setup checks |
+| `GET` | `/api/v1/dashboard` | Filtered dashboard payload |
+| `GET` | `/api/v1/recommendations` | Recommendation payload |
+| `POST` | `/api/v1/copilot` | Grounded Cost Copilot question |
+
+Read-only examples:
 
 ```bash
-minikube start
-eval $(minikube docker-env)
-docker build -f apps/backend-api/Dockerfile -t oci-cost-optimizer/backend-api:local .
-kubectl create namespace oci-cost-optimizer --dry-run=client -o yaml | kubectl apply -f -
-kubectl -n oci-cost-optimizer apply -f k8s/base/backend-api.yaml
-kubectl -n oci-cost-optimizer rollout status deployment/backend-api
-kubectl -n oci-cost-optimizer port-forward svc/backend-api 8080:80
+curl -s http://127.0.0.1:4310/api/v1/health
+curl -s http://127.0.0.1:4310/api/v1/ready
+curl -s 'http://127.0.0.1:4310/api/v1/dashboard?region=all&service=all'
+curl -s -X POST http://127.0.0.1:4310/api/v1/copilot \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"Where can I save the most?","filters":{"region":"all","service":"all"}}'
 ```
 
-Open:
+## Testing
 
-```text
-http://127.0.0.1:8080
-```
-
-## Current API Access
-
-The current implemented API uses the `/api/v1` prefix. The older `/api` prefix remains as a temporary compatibility layer.
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/v1/health` | Liveness status |
-| `GET` | `/api/v1/ready` | Readiness and dependency status |
-| `GET` | `/api/v1/version` | Service and API version metadata |
-| `GET` | `/api/v1/status` | Combined service, readiness, dependency, and setup status |
-| `GET` | `/api/v1/setup` | OCI and LLM setup status |
-| `POST` | `/api/v1/setup/env-file` | Select a runtime `.env` file |
-| `GET` | `/api/v1/dashboard?region=all&service=all` | Dashboard data |
-| `GET` | `/api/v1/recommendations?region=all&service=all` | Recommendation data |
-| `POST` | `/api/v1/copilot` | Ask the optimization assistant |
-
-Examples:
-
-```bash
-curl -s http://127.0.0.1:8080/api/v1/health
-curl -s http://127.0.0.1:8080/api/v1/ready
-curl -s "http://127.0.0.1:8080/api/v1/dashboard?region=all&service=all"
-curl -s "http://127.0.0.1:8080/api/v1/recommendations?region=all&service=Compute"
-curl -s -X POST http://127.0.0.1:8080/api/v1/copilot \
-  -H "Content-Type: application/json" \
-  -d '{"question":"How can I reduce compute costs?","filters":{"region":"all","service":"Compute"}}'
-```
-
-For the detailed API contract, Minikube notes, request/response examples, and service flow, see [apps/backend-api/README.md](apps/backend-api/README.md).
-
-## Target Enterprise API
-
-The enterprise public API now uses `/api/v1`; typed schemas and OpenAPI documentation remain a planned hardening step:
-
-| Method | Path | Owner |
-| --- | --- | --- |
-| `GET` | `/api/v1/health` | `backend-api` |
-| `GET` | `/api/v1/ready` | `backend-api` |
-| `GET` | `/api/v1/version` | `backend-api` |
-| `GET` | `/api/v1/status` | `backend-api` |
-| `GET` | `/api/v1/setup` | `backend-api` |
-| `GET` | `/api/v1/dashboard` | `backend-api`, `analytics-engine` |
-| `GET` | `/api/v1/recommendations` | `backend-api`, `recommendation-orchestrator` |
-| `POST` | `/api/v1/copilot` | `backend-api`, `agent-service` |
-
-Internal services should expose `/internal/v1/...` APIs over Kubernetes `ClusterIP` services only.
-
-## Kubernetes Direction
-
-Each microservice should own its deployment bundle:
-
-- `Deployment`
-- `Service`
-- `ConfigMap`
-- `Secret`
-- `ServiceAccount`
-- `NetworkPolicy`
-- resource requests and limits
-- health and readiness probes
-
-Minikube should run one replica per service first. Only `backend-api` should be exposed from the laptop with `kubectl port-forward`, Minikube ingress, or a local API gateway.
-
-## OCI Cloud Replica
-
-The OCI replica of the AWS-style reference architecture is scaffolded in [infra/terraform/oci](infra/terraform/oci). It provisions OCI API Gateway, OCI Functions, OCIR, network resources, a Functions dynamic group, and IAM policies for cost retrieval, resource management, and AI advisor handlers.
-
-Start with `enable_resource_mutation = false`, test read-only cost and recommendation flows first, then enable mutation policies only after approval workflow and audit logging are in place.
-
-## Configuration
-
-Common runtime variables:
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `APP_MODE` | `mock` | Runtime mode, usually `mock` or `oci` |
-| `DATA_PROVIDER` | `mock` | Cost and inventory provider |
-| `HOST` | `127.0.0.1` local, `0.0.0.0` container | Bind address |
-| `PORT` | `4310` local, `8080` container | HTTP port |
-| `LLM_PROVIDER` | `mock` | LLM provider adapter |
-| `OLLAMA_BASE_URL` | `http://host.k3d.internal:11434` | Ollama endpoint used by `agent-service` |
-| `OLLAMA_MODEL` | `llama3.2:3b` | Local Ollama model for Copilot and suggestions |
-| `ANALYTICS_SERVICE_URL` | empty | Internal analytics service URL used by `backend-api` |
-| `AGENT_SERVICE_URL` | empty | Internal agent service URL used by `backend-api` |
-| `OPENAI_API_KEY` | empty | Required only for OpenAI-backed Copilot |
-| `OPENAI_MODEL` | `gpt-4.1-mini` | OpenAI model name |
-
-## QA, Functional, And Security Testing
-
-Run local unit, functional, and lightweight penetration/security checks:
+Run unit, functional, security, and static checks:
 
 ```bash
 scripts/qa.sh
 ```
 
-Run functional checks against a running k3d port-forward:
+Run HTTP functional checks against a running deployment:
 
 ```bash
-BASE_URL=http://127.0.0.1:8080 scripts/functional-test.sh
+BASE_URL=http://127.0.0.1:4310 scripts/functional-test.sh
 ```
 
-The current security checks verify:
+The security suite checks for committed secrets, private-key markers, mutating OCI operations, non-root Kubernetes workloads, dropped capabilities, and resource limits.
 
-- No real secrets or private keys are committed.
-- No mutating OCI SDK or CLI operations are exposed by the backend.
-- k3d workloads run as non-root with dropped Linux capabilities.
-- k3d workloads define CPU and memory requests/limits.
-- Backend security headers are tested in unit tests.
+## Production Checklist
 
-OCI-backed mode also needs OCI tenancy, user, fingerprint, region, config, and private key settings. In Kubernetes, use `Secret` objects for keys and tokens, `ConfigMap` objects for non-sensitive runtime settings, and read-only volume mounts for OCI key files.
+- Put the public API behind TLS, authentication, authorization, and rate limiting.
+- Replace the current development HTTP server with a production ASGI server and typed API schemas.
+- Store recommendation lifecycle, approvals, and audit events in PostgreSQL.
+- Add bounded Redis caching with explicit TTLs and memory limits.
+- Add structured logs, metrics, traces, SLOs, and alerting.
+- Use OCI Vault or an external secrets operator for credentials.
+- Restrict NetworkPolicies and egress to required OCI and Ollama endpoints.
+- Add image signing, vulnerability scanning, SBOM generation, and admission policy.
+- Add backup, restore, retention, and disaster-recovery procedures for stateful services.
+- Add human approval and a separate privileged service before considering any future remediation automation.
+- Perform threat modeling and independent penetration testing before internet or enterprise-wide exposure.
 
-## Enterprise Hardening
+## Repository Layout
 
-- Replace the current Python `http.server` implementation with FastAPI or another ASGI framework.
-- Add OpenAPI documentation generated from typed request and response schemas.
-- Continue splitting provider, analytics, recommendation, and LLM responsibilities into separate services.
-- Add authentication, authorization, and audit logging before production use.
-- Add correlation IDs, structured logs, metrics, and distributed tracing.
-- Add Kubernetes network policies, resource limits, disruption budgets, and autoscaling.
-- Keep local mock mode fast and deterministic so every service can run in Minikube on a laptop.
+```text
+apps/backend-api/   Public API, analytics service, agent service, tests
+apps/frontend/      Responsive dashboard and setup UI
+docs/               Architecture, ADRs, screenshots, publication assets
+infra/terraform/oci OCI target infrastructure scaffold
+k8s/k3d/            Local microservice manifests
+scripts/            Build, cluster, QA, functional, and security tools
+```
+
+## License and Support
+
+No license or formal support policy is currently declared. Add both before distributing the project outside its intended evaluation audience.

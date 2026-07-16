@@ -311,6 +311,7 @@ button {
 
 .panel,
 .kpi-card {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -572,6 +573,7 @@ th {
 @media (max-width: 980px) {
   .topbar {
     align-items: flex-start;
+    flex-wrap: wrap;
   }
 
   .filters {
@@ -599,13 +601,24 @@ th {
     gap: 10px;
   }
 
+  .title-block {
+    min-width: 0;
+    flex: 1;
+  }
+
   .filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-left: 0;
   }
 
   .filters select,
   .filters button {
-    flex: 1 1 150px;
+    width: 100%;
+  }
+
+  .filters button {
+    grid-column: 1 / -1;
   }
 
   .kpi-grid {
