@@ -1,63 +1,75 @@
 # OCI Cost Optimizer AI Recommendation
 
-This project will build an OCI Cost Optimizer dashboard with LLM-assisted recommendations.
+Enterprise-grade OCI cost optimization with a Minikube-first microservice architecture, pluggable OCI data providers, and AI-assisted recommendations.
 
-The first delivery target is a standalone local Python/Node-style app for personal development and demos. It runs on a Mac laptop without Kubernetes, external databases, or cloud credentials.
+The repository currently includes a working `backend-api` service and frontend assets. The target architecture splits ingestion, analytics, recommendation orchestration, and LLM execution into independently deployable services that can run locally in Minikube before moving to OKE or another enterprise Kubernetes platform.
 
-Later targets can still add Minikube and OCI-managed infrastructure, keeping the same API and service boundaries where possible.
+Architecture docs:
 
-## Architecture Docs
+- [OCI Cloud Replica Architecture](docs/oci-cloud-replica-architecture.md)
+- [Architecture](docs/architecture.md)
+- [Principal Architecture Blueprint](docs/principal-architecture-blueprint.md)
+- [Minikube Deployment Plan](docs/minikube-deployment-plan.md)
+- [Architecture Decision Records](docs/adr)
 
-- [Architecture](./docs/architecture.md)
-- [Principal Architecture Blueprint](./docs/principal-architecture-blueprint.md)
-- [Minikube Deployment Plan](./docs/minikube-deployment-plan.md)
-- [Dashboard Template Direction](./docs/dashboard-template.md)
-- [Architecture Decision Records](./docs/adr)
+## Architecture
 
-## Frontend Prototype
+```text
+User or frontend
+  -> backend-api
+  -> ingestion-service
+  -> analytics-engine
+  -> recommendation-orchestrator
+  -> agent-service
+  -> OCI APIs and LLM providers
+```
 
-- [OCI Cost Optimizer HTML Prototype](./prototypes/oci-cost-optimizer.html)
+| Service | Responsibility | Status |
+| --- | --- | --- |
+| `backend-api` | Public REST API, frontend serving, request orchestration | Implemented |
+| `frontend` | Browser UI for setup, dashboard, recommendations, and Copilot | Implemented as static assets |
+| `ingestion-service` | OCI cost, usage, inventory, and metric ingestion | Planned |
+| `analytics-engine` | Aggregations, forecasts, spend trends, anomaly signals | Planned |
+| `recommendation-orchestrator` | Recommendation rules and AI workflow coordination | Planned |
+| `agent-service` | LLM provider abstraction for Copilot and narrative recommendations | Planned |
 
-The HTML prototype must remain a standalone mock-mode fallback so the dashboard can still be shown if Minikube or backend services are unavailable.
+Public clients should call only `backend-api`. Internal services should communicate through cluster-private Kubernetes services.
 
-## Local Standalone Application
+## Repository Layout
 
-The first app is implemented as a Python mock backend that serves the dashboard frontend and API from one local process. It is available without installing dependencies:
+```text
+apps/
+  backend-api/                  # Public API service
+  frontend/                     # Static frontend served by backend-api
+  ingestion-service/            # Planned microservice
+  analytics-engine/             # Planned microservice
+  recommendation-orchestrator/  # Planned microservice
+  agent-service/                # Planned microservice
+k8s/
+  base/backend-api.yaml         # Current Minikube-ready backend deployment
+infra/
+  terraform/oci/                # OCI API Gateway, Functions, IAM, and network scaffold
+config/                         # Local configuration files
+fixtures/                       # Mock/local data inputs
+scripts/                        # Utility scripts
+```
+
+## Quick Start
+
+### Local Python
 
 ```bash
 cd apps/backend-api
 PYTHONPATH=src python3 -m oci_cost_optimizer
 ```
 
-Then open:
+Open:
 
 ```text
 http://127.0.0.1:4310
 ```
 
-The mock server serves the dashboard frontend and exposes deterministic mock endpoints:
-
-- `GET /api/health`
-- `GET /api/ready`
-- `GET /api/dashboard?region=all&service=all`
-- `GET /api/recommendations?region=all&service=all`
-- `POST /api/copilot`
-
-Container build from the repository root:
-
-```bash
-docker build -f apps/backend-api/Dockerfile -t oci-cost-optimizer/backend-api:local .
-```
-
-## Docker Desktop Run
-
-The container is designed to run with a small local footprint:
-
-- Memory limit: `2 GB`
-- CPU limit: `1 CPU`
-- Process limit: `256`
-
-Build and run with Docker Compose:
+### Docker Compose
 
 ```bash
 docker compose up --build
@@ -69,229 +81,114 @@ Open:
 http://127.0.0.1:8080
 ```
 
-Stop:
+### Minikube
 
 ```bash
-docker compose down
-```
-
-Equivalent `docker run` command:
-
-```bash
+minikube start
+eval $(minikube docker-env)
 docker build -f apps/backend-api/Dockerfile -t oci-cost-optimizer/backend-api:local .
-docker run --rm \
-  --name oci-cost-optimizer \
-  --memory=2g \
-  --cpus=1 \
-  --pids-limit=256 \
-  -p 8080:8080 \
-  --env-file .env \
-  -e HOST=0.0.0.0 \
-  -e PORT=8080 \
-  -e OCI_CLI_PATH=oci \
-  -e OCI_CONFIG_FILE=/oci/config \
-  -v "$PWD/config:/config:ro" \
-  -v "$PWD/.oci:/oci:ro" \
-  oci-cost-optimizer/backend-api:local
+kubectl create namespace oci-cost-optimizer --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n oci-cost-optimizer apply -f k8s/base/backend-api.yaml
+kubectl -n oci-cost-optimizer rollout status deployment/backend-api
+kubectl -n oci-cost-optimizer port-forward svc/backend-api 8080:80
 ```
 
-The app also exposes setup assistance at:
-
-```text
-http://127.0.0.1:8080/setup
-http://127.0.0.1:8080/api/setup
-```
-
-The dashboard shows a setup banner if OCI live mode is selected but required details are missing.
-
-## New Laptop First Run
-
-The app can start before the user has OCI or OpenAI credentials. The recommended first run is mock mode:
-
-```bash
-docker compose up --build
-```
-
-Then open:
+Open:
 
 ```text
 http://127.0.0.1:8080
 ```
 
-When a user wants live OCI data, they can either mount an OCI CLI config or enter individual values in `.env`. The app assists through:
+## Current API Access
 
-```text
-http://127.0.0.1:8080/setup
-http://127.0.0.1:8080/api/setup
-```
+The current implemented API uses the `/api/v1` prefix. The older `/api` prefix remains as a temporary compatibility layer.
 
-The dashboard also shows a setup banner with missing items. It never prints secret values; it reports only `set` or `missing`.
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/v1/health` | Liveness status |
+| `GET` | `/api/v1/ready` | Readiness and dependency status |
+| `GET` | `/api/v1/version` | Service and API version metadata |
+| `GET` | `/api/v1/status` | Combined service, readiness, dependency, and setup status |
+| `GET` | `/api/v1/setup` | OCI and LLM setup status |
+| `POST` | `/api/v1/setup/env-file` | Select a runtime `.env` file |
+| `GET` | `/api/v1/dashboard?region=all&service=all` | Dashboard data |
+| `GET` | `/api/v1/recommendations?region=all&service=all` | Recommendation data |
+| `POST` | `/api/v1/copilot` | Ask the optimization assistant |
 
-Setup mode can load an env file after the app has already started. For Docker, put the file in the ignored local `config/` folder:
-
-```text
-config/.env
-```
-
-Docker Compose mounts that folder at `/config`, so enter this path in setup mode:
-
-```text
-/config/.env
-```
-
-The env file should include whichever providers the user wants to enable:
+Examples:
 
 ```bash
-DATA_PROVIDER=oci
-LLM_PROVIDER=openai
+curl -s http://127.0.0.1:8080/api/v1/health
+curl -s http://127.0.0.1:8080/api/v1/ready
+curl -s "http://127.0.0.1:8080/api/v1/dashboard?region=all&service=all"
+curl -s "http://127.0.0.1:8080/api/v1/recommendations?region=all&service=Compute"
+curl -s -X POST http://127.0.0.1:8080/api/v1/copilot \
+  -H "Content-Type: application/json" \
+  -d '{"question":"How can I reduce compute costs?","filters":{"region":"all","service":"Compute"}}'
 ```
 
-For OpenAI-backed recommendations, the user sets:
+For the detailed API contract, Minikube notes, request/response examples, and service flow, see [apps/backend-api/README.md](apps/backend-api/README.md).
 
-```bash
-LLM_PROVIDER=openai
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4.1-mini
-```
+## Target Enterprise API
 
-Keep OpenAI keys in `.env` only. Do not commit them.
+The enterprise public API now uses `/api/v1`; typed schemas and OpenAPI documentation remain a planned hardening step:
 
-## Local Git State
+| Method | Path | Owner |
+| --- | --- | --- |
+| `GET` | `/api/v1/health` | `backend-api` |
+| `GET` | `/api/v1/ready` | `backend-api` |
+| `GET` | `/api/v1/version` | `backend-api` |
+| `GET` | `/api/v1/status` | `backend-api` |
+| `GET` | `/api/v1/setup` | `backend-api` |
+| `GET` | `/api/v1/dashboard` | `backend-api`, `analytics-engine` |
+| `GET` | `/api/v1/recommendations` | `backend-api`, `recommendation-orchestrator` |
+| `POST` | `/api/v1/copilot` | `backend-api`, `agent-service` |
 
-This project is tracked in a local Git repository. Check the current state:
+Internal services should expose `/internal/v1/...` APIs over Kubernetes `ClusterIP` services only.
 
-```bash
-git status
-```
+## Kubernetes Direction
 
-Save a new checkpoint:
+Each microservice should own its deployment bundle:
 
-```bash
-git add .
-git commit -m "Describe the change"
-```
+- `Deployment`
+- `Service`
+- `ConfigMap`
+- `Secret`
+- `ServiceAccount`
+- `NetworkPolicy`
+- resource requests and limits
+- health and readiness probes
 
-Show recent checkpoints:
+Minikube should run one replica per service first. Only `backend-api` should be exposed from the laptop with `kubectl port-forward`, Minikube ingress, or a local API gateway.
 
-```bash
-git log --oneline --max-count=10
-```
+## OCI Cloud Replica
 
-Revert a committed change without rewriting history:
+The OCI replica of the AWS-style reference architecture is scaffolded in [infra/terraform/oci](infra/terraform/oci). It provisions OCI API Gateway, OCI Functions, OCIR, network resources, a Functions dynamic group, and IAM policies for cost retrieval, resource management, and AI advisor handlers.
 
-```bash
-git revert <commit-sha>
-```
+Start with `enable_resource_mutation = false`, test read-only cost and recommendation flows first, then enable mutation policies only after approval workflow and audit logging are in place.
 
-For the initial baseline, the first commit is:
+## Configuration
 
-```text
-b7727f5 Initial standalone OCI cost optimizer app
-```
+Common runtime variables:
 
-## Phase 1 Scope
+| Variable | Default | Description |
+| --- | --- | --- |
+| `APP_MODE` | `mock` | Runtime mode, usually `mock` or `oci` |
+| `DATA_PROVIDER` | `mock` | Cost and inventory provider |
+| `HOST` | `127.0.0.1` local, `0.0.0.0` container | Bind address |
+| `PORT` | `4310` local, `8080` container | HTTP port |
+| `LLM_PROVIDER` | `mock` | LLM provider adapter |
+| `OPENAI_API_KEY` | empty | Required only for OpenAI-backed Copilot |
+| `OPENAI_MODEL` | `gpt-4.1-mini` | OpenAI model name |
 
-- Run as a single local process.
-- Serve the dashboard from `apps/frontend`.
-- Use deterministic mock OCI cost, usage, inventory, and recommendation data.
-- Keep API routes shaped like the later production backend.
-- Add real OCI, database, queue, and LLM integrations behind adapters after the local workflow feels useful.
+OCI-backed mode also needs OCI tenancy, user, fingerprint, region, config, and private key settings. In Kubernetes, use `Secret` objects for keys and tokens, `ConfigMap` objects for non-sensitive runtime settings, and read-only volume mounts for OCI key files.
 
-## Local Secrets and OCI Config
+## Enterprise Hardening
 
-Use `.env` for local-only credentials and account identifiers. Start from the example file:
-
-```bash
-cp .env.example .env
-```
-
-Then put your OCI tenancy OCID and other local credentials in `.env`. The tenancy OCID you provided belongs in:
-
-```bash
-OCI_TENANCY_OCID=ocid1.tenancy.oc1..aaaaaaaagfnp3wexxeiqiozketi5rlismcclwqewd4hzhn7xndkpay6uobjq
-OCI_REGION=ap-mumbai-1
-```
-
-Do not commit `.env`, private keys, auth tokens, or API keys.
-
-For Docker live OCI mode, use one of these setup patterns.
-
-Pattern A: mount an OCI CLI config and key into the container:
-
-```text
-.oci/
-  config
-  oci_api_key.pem
-```
-
-Inside `.oci/config`, the key path must be a container path:
-
-```ini
-[DEFAULT]
-user=ocid1.user.oc1..example
-fingerprint=aa:bb:cc:dd:ee:ff
-tenancy=ocid1.tenancy.oc1..example
-region=ap-mumbai-1
-key_file=/oci/oci_api_key.pem
-```
-
-Pattern B: provide individual values in `.env`. The app can generate a runtime OCI CLI config when all of these are set:
-
-```bash
-DATA_PROVIDER=oci
-OCI_USER_OCID=ocid1.user.oc1..example
-OCI_FINGERPRINT=aa:bb:cc:dd:ee:ff
-OCI_TENANCY_OCID=ocid1.tenancy.oc1..example
-OCI_REGION=ap-mumbai-1
-OCI_KEY_FILE=/oci/oci_api_key.pem
-```
-
-In both patterns, mount the key file so `/oci/oci_api_key.pem` exists inside the container.
-
-## Local OCI CLI
-
-The OCI CLI can be installed into the project virtual environment:
-
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install --upgrade pip oci-cli
-```
-
-This project uses a local ignored OCI config at `.oci/config`, generated from `.env`.
-
-Verify access to the Mumbai region:
-
-```bash
-.venv/bin/oci iam region list --config-file .oci/config --auth api_key --query "data[?name=='ap-mumbai-1']"
-```
-
-To show live OCI inventory in the standalone dashboard, set this in `.env`:
-
-```bash
-DATA_PROVIDER=oci
-```
-
-Then restart the backend. The dashboard will use OCI Search for live resources and OCI Usage API for cost rows when billing data is available to the API key.
-
-## Planned Capabilities
-
-- OCI cost, usage, inventory, and utilization ingestion.
-- Deterministic cost analytics.
-- LLM-backed recommendation agents.
-- PostgreSQL-backed state management.
-- Redis-backed cache and local queue.
-- Dashboard workflow for review, approval, rejection, and tracking.
-- Optional Minikube deployment with an OCI migration path.
-
-## Suggested Next Step
-
-Build out the standalone local app before adding distributed services:
-
-```text
-apps/
-  frontend/
-  backend-api/
-  local-data/
-docs/
-  adr/
-```
+- Replace the current Python `http.server` implementation with FastAPI or another ASGI framework.
+- Add OpenAPI documentation generated from typed request and response schemas.
+- Split provider, analytics, recommendation, and LLM responsibilities into separate services.
+- Add authentication, authorization, and audit logging before production use.
+- Add correlation IDs, structured logs, metrics, and distributed tracing.
+- Add Kubernetes network policies, resource limits, disruption budgets, and autoscaling.
+- Keep local mock mode fast and deterministic so every service can run in Minikube on a laptop.

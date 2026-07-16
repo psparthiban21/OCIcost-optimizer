@@ -14,7 +14,7 @@ def create_setup_status(settings: Settings) -> dict[str, Any]:
             "label": "Environment file",
             "ok": True,
             "value": str(settings.env_file_path) if settings.env_file_loaded else "not loaded; using process environment",
-            "help": "Optional. Create a .env file, then open /setup.html and provide its path as seen by this app or container.",
+            "help": "Optional. Create a .env file, then open /setup.html and provide its path. Docker Compose mounts your home directory read-only, so host paths under your home can be entered directly.",
         },
         {
             "id": "data_provider",
@@ -63,7 +63,7 @@ def create_setup_status(settings: Settings) -> dict[str, Any]:
             "label": "OCI private key file",
             "ok": settings.data_provider != "oci" or bool(settings.oci_key_file) and settings.oci_key_file.is_file(),
             "value": str(settings.oci_key_file) if settings.oci_key_file else "missing",
-            "help": "Inside Docker, the key file path must exist inside the container. Mount ./.oci to /oci and use key_file=/oci/oci_api_key.pem.",
+            "help": "Inside Docker, the key file path must exist inside the container. Compose mounts your home directory read-only, so a host key path under your home can be used directly.",
         },
         {
             "id": "llm_provider",
@@ -107,9 +107,9 @@ def create_setup_status(settings: Settings) -> dict[str, Any]:
         "assistance": {
             "newLaptop": [
                 "Run in mock mode first: DATA_PROVIDER=mock and LLM_PROVIDER=mock.",
-                "Open /setup.html to provide the initial .env file path after creating it.",
-                "For OCI live mode, create .oci/config and .oci/oci_api_key.pem, then mount ./.oci to /oci in Docker.",
-                "Inside Docker, OCI config key_file must be /oci/oci_api_key.pem, not a host path such as /Users/name/...",
+                "Open /setup.html to provide any .env file path after creating it. With Docker Compose, host paths under your home are mounted read-only at the same path.",
+                "For OCI live mode, create an OCI config and private key either under your home directory or in the repo .oci folder.",
+                "Inside Docker, OCI config key_file must point to a path visible inside the container. With Compose, host paths under your home are mounted read-only at the same path.",
                 "For OpenAI recommendations, set LLM_PROVIDER=openai and OPENAI_API_KEY in .env.",
             ],
             "ociRequiredEnv": [
@@ -118,7 +118,7 @@ def create_setup_status(settings: Settings) -> dict[str, Any]:
                 "OCI_FINGERPRINT",
                 "OCI_TENANCY_OCID",
                 "OCI_REGION",
-                "OCI_KEY_FILE=/oci/oci_api_key.pem",
+                "OCI_KEY_FILE=/Users/name/path/to/oci_api_key.pem",
             ],
             "openaiRequiredEnv": [
                 "LLM_PROVIDER=openai",

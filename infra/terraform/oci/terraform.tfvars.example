@@ -1,0 +1,27 @@
+tenancy_ocid     = "ocid1.tenancy.oc1..example"
+user_ocid        = "ocid1.user.oc1..example"
+fingerprint      = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+private_key      = "replace-with-local-terraform-api-key-content"
+region           = "ap-mumbai-1"
+compartment_ocid = "ocid1.compartment.oc1..example"
+
+project_name = "oci-cost-optimizer"
+environment  = "dev"
+
+# Use the OCIR image names you pushed for each function.
+# Example shape:
+# bom.ocir.io/<namespace>/oci-cost-optimizer/functions/cost-retriever:0.1.0
+cost_retriever_image   = "replace-region.ocir.io/replace-namespace/oci-cost-optimizer/functions/cost-retriever:0.1.0"
+resource_manager_image = "replace-region.ocir.io/replace-namespace/oci-cost-optimizer/functions/resource-manager:0.1.0"
+ai_advisor_image       = "replace-region.ocir.io/replace-namespace/oci-cost-optimizer/functions/ai-advisor:0.1.0"
+
+llm_provider                  = "oci-generative-ai"
+openai_api_key_secret_ocid    = ""
+create_vault                  = true
+vault_type                    = "DEFAULT"
+openai_api_key_secret_content_base64 = ""
+database_password_secret_content_base64 = ""
+enable_resource_mutation      = false
+api_gateway_endpoint_type     = "PRIVATE"
+api_gateway_ingress_cidr      = ""
+target_resource_compartment_ocid = ""

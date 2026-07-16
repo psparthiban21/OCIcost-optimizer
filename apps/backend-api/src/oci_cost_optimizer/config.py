@@ -4,6 +4,7 @@ import configparser
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import shutil
 
 
 RUNTIME_DIR = Path(os.getenv("OCI_COST_OPTIMIZER_RUNTIME_DIR", "/tmp/oci-cost-optimizer"))
@@ -168,6 +169,18 @@ def _first_existing_path(project_root: Path, values: list[str]) -> Path:
     return fallback or Path("")
 
 
+def _resolve_oci_cli_path(project_root: Path, configured_value: str | Path) -> Path:
+    configured_path = _project_path(project_root, configured_value)
+
+    if configured_path.is_file() or shutil.which(str(configured_path)):
+        return configured_path
+
+    if shutil.which("oci"):
+        return Path("oci")
+
+    return configured_path
+
+
 def load_settings() -> Settings:
     package_file = Path(__file__).resolve()
     project_root = _find_project_root(package_file)
@@ -180,6 +193,7 @@ def load_settings() -> Settings:
         _load_env_file(selected_env_file, override=True)
 
     default_oci_cli = project_root / ".venv" / "bin" / "oci"
+    oci_cli_path = _resolve_oci_cli_path(project_root, os.getenv("OCI_CLI_PATH", default_oci_cli if default_oci_cli.exists() else "oci"))
     oci_profile = os.getenv("OCI_PROFILE", "DEFAULT")
     configured_oci_config = _project_path(project_root, os.getenv("OCI_CONFIG_FILE", project_root / ".oci" / "config")).resolve()
     generated_oci_config = configured_oci_config if configured_oci_config.is_file() else _write_generated_oci_config(project_root, oci_profile)
@@ -195,7 +209,7 @@ def load_settings() -> Settings:
         port=int(os.getenv("PORT", "4310")),
         static_root=Path(os.getenv("STATIC_ROOT", apps_root / "frontend")).resolve(),
         project_root=project_root,
-        oci_cli_path=_project_path(project_root, os.getenv("OCI_CLI_PATH", default_oci_cli if default_oci_cli.exists() else "oci")),
+        oci_cli_path=oci_cli_path,
         oci_config_file=oci_config_file,
         oci_profile=oci_profile,
         oci_tenancy_ocid=os.getenv("OCI_TENANCY_OCID", oci_profile_values.get("tenancy", "")),

@@ -15,12 +15,12 @@
 
         <form id="envFileForm" class="setup-form">
           <label for="envFilePath">Environment file path</label>
-          <input id="envFilePath" name="envFilePath" placeholder="/app/.env or /config/.env" autocomplete="off" />
+          <input id="envFilePath" name="envFilePath" placeholder="/Users/name/project/.env or /config/.env" autocomplete="off" />
           <button type="submit">Load configuration</button>
         </form>
 
         <div class="setup-hint">
-          <strong>Docker note:</strong> the path must exist inside the container. Mount a folder such as `./config:/config:ro`, then enter `/config/.env`.
+          <strong>Docker note:</strong> Compose mounts your home directory read-only at the same path, so you can enter a host path such as `/Users/name/project/.env` after the container starts.
         </div>
 
         <section id="setupResult" class="setup-result" hidden></section>
@@ -28,7 +28,7 @@
 
         <p class="setup-links">
           <a href="/">Open dashboard</a>
-          <a href="/api/setup">View setup JSON</a>
+          <a href="/api/v1/setup">View setup JSON</a>
         </p>
       </section>
     </main>

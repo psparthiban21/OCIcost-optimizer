@@ -14,6 +14,7 @@ const currency = new Intl.NumberFormat("en-US", {
 });
 
 const fmt = (value) => currency.format(value);
+const API_BASE = "/api/v1";
 
 async function fetchJson(path, options) {
   const response = await fetch(path, options);
@@ -27,7 +28,7 @@ async function fetchJson(path, options) {
 
 async function renderSetupBanner() {
   const banner = document.querySelector("#setupBanner");
-  const setup = await fetchJson("/api/setup");
+  const setup = await fetchJson(`${API_BASE}/setup`);
 
   if (setup.ready && setup.dataProvider !== "oci") {
     banner.hidden = true;
@@ -304,7 +305,7 @@ function renderAll(data) {
 }
 
 async function loadDashboard() {
-  const data = await fetchJson(`/api/dashboard?${queryString()}`);
+  const data = await fetchJson(`${API_BASE}/dashboard?${queryString()}`);
   renderAll(data);
 }
 
@@ -321,7 +322,7 @@ async function askCopilot(question) {
   pushMessage(question, "user");
   const input = document.querySelector("#question");
   input.value = "";
-  const answer = await fetchJson("/api/copilot", {
+  const answer = await fetchJson(`${API_BASE}/copilot`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ question, filters: state.filters })

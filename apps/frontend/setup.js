@@ -1,3 +1,5 @@
+const API_BASE = "/api/v1";
+
 async function fetchJson(path, options) {
   const response = await fetch(path, options);
   const payload = await response.json();
@@ -36,7 +38,7 @@ function showResult(message, className) {
 }
 
 async function loadSetup() {
-  const setup = await fetchJson("/api/setup");
+  const setup = await fetchJson(`${API_BASE}/setup`);
   renderChecks(setup);
 
   if (setup.envFile?.path) {
@@ -49,7 +51,7 @@ document.querySelector("#envFileForm").addEventListener("submit", async (event) 
   const path = document.querySelector("#envFilePath").value.trim();
 
   try {
-    const payload = await fetchJson("/api/setup/env-file", {
+    const payload = await fetchJson(`${API_BASE}/setup/env-file`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ path })

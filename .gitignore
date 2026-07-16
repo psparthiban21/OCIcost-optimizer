@@ -5,3 +5,10 @@ config/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.DS_Store
+**/.DS_Store
+outputs/
+*.zip
+*.tar.gz
+.terraform/
+**/.terraform/
