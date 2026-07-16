@@ -178,29 +178,51 @@ def _resources(settings: Settings, compartments: dict[str, str], filters: dict[s
 
 
 def _usage_items(settings: Settings, group_by: list[str], start: date, end: date) -> list[dict[str, Any]]:
-    payload = _run_oci(
-        settings,
-        [
-            "usage-api",
-            "usage-summary",
-            "request-summarized-usages",
-            "--tenant-id",
-            settings.oci_tenancy_ocid,
-            "--time-usage-started",
-            start.isoformat(),
-            "--time-usage-ended",
-            end.isoformat(),
-            "--granularity",
-            "DAILY",
-            "--query-type",
-            "COST",
-            "--group-by",
-            json.dumps(group_by),
-            "--limit",
-            "1000",
-        ],
-    )
-    return _items(payload)
+    try:
+        import oci
+    except ImportError as exc:
+        raise OciDataError("OCI Python SDK is required for cost usage queries") from exc
+
+    config = {
+        "user": settings.oci_user_ocid,
+        "fingerprint": settings.oci_fingerprint,
+        "tenancy": settings.oci_tenancy_ocid,
+        "region": settings.oci_region,
+        "key_file": str(settings.oci_key_file),
+    }
+    usage_start = datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc)
+    usage_end = datetime.combine(end, datetime.min.time(), tzinfo=timezone.utc)
+
+    try:
+        oci.config.validate_config(config)
+        client = oci.usage_api.UsageapiClient(config, timeout=(10, 30))
+        details = oci.usage_api.models.RequestSummarizedUsagesDetails(
+            tenant_id=settings.oci_tenancy_ocid,
+            time_usage_started=usage_start,
+            time_usage_ended=usage_end,
+            granularity="DAILY",
+            query_type="COST",
+            group_by=group_by,
+        )
+        response = client.request_summarized_usages(details)
+    except (
+        oci.exceptions.InvalidConfig,
+        oci.exceptions.RequestException,
+        oci.exceptions.ServiceError,
+        ValueError,
+    ) as exc:
+        raise OciDataError(f"OCI Usage API request failed: {exc}") from exc
+
+    return [
+        {
+            "time-usage-started": item.time_usage_started.isoformat() if item.time_usage_started else None,
+            "computed-amount": item.computed_amount,
+            "service": item.service,
+            "compartment-name": item.compartment_name,
+            "region": item.region,
+        }
+        for item in (response.data.items or [])
+    ]
 
 
 def _float_value(item: dict[str, Any], *keys: str) -> float:

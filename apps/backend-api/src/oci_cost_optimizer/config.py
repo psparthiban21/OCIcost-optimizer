@@ -129,24 +129,23 @@ def _read_oci_profile(config_file: Path, profile: str) -> dict[str, str]:
     return {key: value for key, value in parser.items(profile)}
 
 
-def _write_generated_oci_config(project_root: Path, profile: str) -> Path | None:
-    required_keys = ["OCI_USER_OCID", "OCI_FINGERPRINT", "OCI_TENANCY_OCID", "OCI_REGION", "OCI_KEY_FILE"]
+def _write_runtime_oci_config(profile: str, values: dict[str, str], key_file: Path) -> Path | None:
+    required_values = [values.get("user"), values.get("fingerprint"), values.get("tenancy"), values.get("region")]
 
-    if not all(os.getenv(key) for key in required_keys):
+    if not all(required_values) or not key_file.is_file():
         return None
 
     runtime_dir = Path(os.getenv("OCI_RUNTIME_CONFIG_DIR", "/tmp/oci-cost-optimizer"))
     runtime_dir.mkdir(parents=True, exist_ok=True)
     config_file = runtime_dir / "config"
-    key_file = _project_path(project_root, os.getenv("OCI_KEY_FILE", ""))
     config_file.write_text(
         "\n".join(
             [
                 f"[{profile}]",
-                f"user={os.getenv('OCI_USER_OCID')}",
-                f"fingerprint={os.getenv('OCI_FINGERPRINT')}",
-                f"tenancy={os.getenv('OCI_TENANCY_OCID')}",
-                f"region={os.getenv('OCI_REGION')}",
+                f"user={values['user']}",
+                f"fingerprint={values['fingerprint']}",
+                f"tenancy={values['tenancy']}",
+                f"region={values['region']}",
                 f"key_file={key_file}",
                 "",
             ]
@@ -155,6 +154,17 @@ def _write_generated_oci_config(project_root: Path, profile: str) -> Path | None
     )
     config_file.chmod(0o600)
     return config_file
+
+
+def _write_generated_oci_config(project_root: Path, profile: str) -> Path | None:
+    values = {
+        "user": os.getenv("OCI_USER_OCID", ""),
+        "fingerprint": os.getenv("OCI_FINGERPRINT", ""),
+        "tenancy": os.getenv("OCI_TENANCY_OCID", ""),
+        "region": os.getenv("OCI_REGION", ""),
+    }
+    key_file = _project_path(project_root, os.getenv("OCI_KEY_FILE", ""))
+    return _write_runtime_oci_config(profile, values, key_file)
 
 
 def _first_existing_path(project_root: Path, values: list[str]) -> Path:
@@ -205,6 +215,19 @@ def load_settings() -> Settings:
     oci_config_file = generated_oci_config or configured_oci_config
     oci_profile_values = _read_oci_profile(oci_config_file, oci_profile)
     oci_key_file = _first_existing_path(project_root, [oci_profile_values.get("key_file", ""), os.getenv("OCI_KEY_FILE", "")])
+
+    configured_key_file = _project_path(project_root, oci_profile_values.get("key_file", ""))
+    if configured_oci_config.is_file() and not configured_key_file.is_file() and oci_key_file.is_file():
+        effective_values = {
+            "user": os.getenv("OCI_USER_OCID", oci_profile_values.get("user", "")),
+            "fingerprint": os.getenv("OCI_FINGERPRINT", oci_profile_values.get("fingerprint", "")),
+            "tenancy": os.getenv("OCI_TENANCY_OCID", oci_profile_values.get("tenancy", "")),
+            "region": os.getenv("OCI_REGION", oci_profile_values.get("region", "")),
+        }
+        runtime_config = _write_runtime_oci_config(oci_profile, effective_values, oci_key_file)
+        if runtime_config:
+            oci_config_file = runtime_config
+            oci_profile_values = effective_values
 
     return Settings(
         app_name=os.getenv("APP_NAME", "oci-cost-optimizer-backend"),
