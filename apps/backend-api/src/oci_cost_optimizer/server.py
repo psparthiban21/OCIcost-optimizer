@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from .config import Settings, load_settings, select_env_file
 from .data_provider import answer_copilot, create_cost_optimizer_data
+from .http_client import ServiceCallError, get_json, post_json
 from .setup_status import create_setup_status
 
 
@@ -109,11 +110,11 @@ class ApiHandler(BaseHTTPRequestHandler):
             return
 
         if route == "/dashboard":
-            self._send_json(create_cost_optimizer_data(filters, self.settings), legacy_api=legacy_api)
+            self._send_json(self._dashboard_payload(filters), legacy_api=legacy_api)
             return
 
         if route == "/recommendations":
-            data = create_cost_optimizer_data(filters, self.settings)
+            data = self._dashboard_payload(filters)
             self._send_json({"meta": data["meta"], "recommendations": data["recommendations"]}, legacy_api=legacy_api)
             return
 
@@ -141,7 +142,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "invalid_request", "message": str(error)}, status=HTTPStatus.BAD_REQUEST, legacy_api=legacy_api)
             return
 
-        answer = answer_copilot(body.get("question", ""), body.get("filters", {}), self.settings)
+        answer = self._copilot_answer(body)
         self._send_json({"answer": answer, "mode": self.settings.mode}, legacy_api=legacy_api)
 
     def _handle_env_file_setup(self, *, legacy_api: bool = False) -> None:
@@ -255,7 +256,39 @@ class ApiHandler(BaseHTTPRequestHandler):
         }
 
     def _dependencies_payload(self) -> dict[str, str]:
-        return {"database": "mock", "cache": "mock", "llm": self.settings.llm_provider}
+        return {
+            "database": "mock",
+            "cache": "mock",
+            "llm": self.settings.llm_provider,
+            "analytics": "service" if self.settings.analytics_service_url else "local",
+            "agent": "service" if self.settings.agent_service_url else "local",
+        }
+
+    def _dashboard_payload(self, filters: dict[str, str]) -> dict[str, object]:
+        if self.settings.analytics_service_url:
+            try:
+                return get_json(f"{self.settings.analytics_service_url}/internal/v1/dashboard", filters)
+            except ServiceCallError as error:
+                log_event("analytics_service_fallback", reason=str(error))
+
+        return create_cost_optimizer_data(filters, self.settings)
+
+    def _copilot_answer(self, body: dict[str, object]) -> str:
+        question = str(body.get("question", ""))
+        filters = body.get("filters", {})
+        filters = filters if isinstance(filters, dict) else {}
+
+        if self.settings.agent_service_url:
+            try:
+                response = post_json(
+                    f"{self.settings.agent_service_url}/internal/v1/copilot",
+                    {"question": question, "filters": filters},
+                )
+                return str(response.get("answer", ""))
+            except ServiceCallError as error:
+                log_event("agent_service_fallback", reason=str(error))
+
+        return answer_copilot(question, filters, self.settings)
 
 
 def create_server(settings: Settings | None = None) -> ThreadingHTTPServer:

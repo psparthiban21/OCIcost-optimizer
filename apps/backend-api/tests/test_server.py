@@ -29,6 +29,10 @@ def _test_settings() -> Settings:
         llm_provider="mock",
         openai_api_key_set=False,
         openai_model="gpt-4.1-mini",
+        ollama_base_url="http://127.0.0.1:11434",
+        ollama_model="llama3.2:3b",
+        analytics_service_url="",
+        agent_service_url="",
         env_file_path=Path(".env"),
         env_file_loaded=False,
     )

@@ -31,6 +31,10 @@ class Settings:
     llm_provider: str
     openai_api_key_set: bool
     openai_model: str
+    ollama_base_url: str
+    ollama_model: str
+    analytics_service_url: str
+    agent_service_url: str
     env_file_path: Path
     env_file_loaded: bool
 
@@ -220,6 +224,10 @@ def load_settings() -> Settings:
         llm_provider=os.getenv("LLM_PROVIDER", "mock").lower(),
         openai_api_key_set=bool(os.getenv("OPENAI_API_KEY")),
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+        ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://host.k3d.internal:11434").rstrip("/"),
+        ollama_model=os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
+        analytics_service_url=os.getenv("ANALYTICS_SERVICE_URL", "").rstrip("/"),
+        agent_service_url=os.getenv("AGENT_SERVICE_URL", "").rstrip("/"),
         env_file_path=selected_env_file or default_env_file,
         env_file_loaded=bool((selected_env_file or default_env_file).is_file()),
     )

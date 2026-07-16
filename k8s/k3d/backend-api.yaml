@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-api
+  namespace: oci-cost-optimizer
+  labels:
+    app.kubernetes.io/name: oci-cost-optimizer
+    app.kubernetes.io/component: backend-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oci-cost-optimizer
+      app.kubernetes.io/component: backend-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: oci-cost-optimizer
+        app.kubernetes.io/component: backend-api
+    spec:
+      containers:
+        - name: backend-api
+          image: localhost/oci-cost-optimizer/backend-api:local
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "-m", "oci_cost_optimizer"]
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: optimizer-config
+          env:
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "8080"
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: OCI_COST_OPTIMIZER_RUNTIME_DIR
+              value: "/tmp/oci-cost-optimizer"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              cpu: 250m
+              memory: 192Mi
+          readinessProbe:
+            httpGet:
+              path: /api/v1/ready
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-api
+  namespace: oci-cost-optimizer
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: oci-cost-optimizer
+    app.kubernetes.io/component: backend-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

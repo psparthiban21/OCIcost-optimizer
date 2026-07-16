@@ -9,6 +9,8 @@ COPY apps/backend-api/src ./src
 COPY apps/frontend ./frontend
 
 ENV PYTHONPATH=/app/src \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
     APP_MODE=mock \
     DATA_PROVIDER=mock \
     HOST=0.0.0.0 \

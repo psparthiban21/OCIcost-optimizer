@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oci-cost-optimizer
+  labels:
+    app.kubernetes.io/name: oci-cost-optimizer
+

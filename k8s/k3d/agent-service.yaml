@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-service
+  namespace: oci-cost-optimizer
+  labels:
+    app.kubernetes.io/name: oci-cost-optimizer
+    app.kubernetes.io/component: agent-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oci-cost-optimizer
+      app.kubernetes.io/component: agent-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: oci-cost-optimizer
+        app.kubernetes.io/component: agent-service
+    spec:
+      containers:
+        - name: agent-service
+          image: localhost/oci-cost-optimizer/backend-api:local
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "-m", "oci_cost_optimizer.agent_service"]
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: optimizer-config
+          env:
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "8080"
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /internal/v1/ready
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /internal/v1/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 32Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-service
+  namespace: oci-cost-optimizer
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: oci-cost-optimizer
+    app.kubernetes.io/component: agent-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

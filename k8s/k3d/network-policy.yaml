@@ -1,0 +1,50 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: oci-cost-optimizer
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-to-internal-services
+  namespace: oci-cost-optimizer
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/component
+        operator: In
+        values:
+          - analytics-engine
+          - agent-service
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: backend-api
+      ports:
+        - protocol: TCP
+          port: 8080
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-from-port-forward
+  namespace: oci-cost-optimizer
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: backend-api
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8080
+  policyTypes:
+    - Ingress
+

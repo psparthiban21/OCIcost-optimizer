@@ -1,8 +1,8 @@
 # OCI Cost Optimizer AI Recommendation
 
-Enterprise-grade OCI cost optimization with a Minikube-first microservice architecture, pluggable OCI data providers, and AI-assisted recommendations.
+Enterprise-grade OCI cost optimization with a local k3d/Podman microservice architecture, pluggable OCI data providers, and AI-assisted recommendations.
 
-The repository currently includes a working `backend-api` service and frontend assets. The target architecture splits ingestion, analytics, recommendation orchestration, and LLM execution into independently deployable services that can run locally in Minikube before moving to OKE or another enterprise Kubernetes platform.
+The repository includes a working `backend-api`, static frontend assets, an `analytics-engine` service entrypoint, and an `agent-service` entrypoint. Local AI assistance uses Ollama by default in k3d mode, with deterministic mock fallback when Ollama is unavailable.
 
 Architecture docs:
 
@@ -29,9 +29,9 @@ User or frontend
 | `backend-api` | Public REST API, frontend serving, request orchestration | Implemented |
 | `frontend` | Browser UI for setup, dashboard, recommendations, and Copilot | Implemented as static assets |
 | `ingestion-service` | OCI cost, usage, inventory, and metric ingestion | Planned |
-| `analytics-engine` | Aggregations, forecasts, spend trends, anomaly signals | Planned |
+| `analytics-engine` | Aggregations, forecasts, spend trends, anomaly signals | Implemented as microservice entrypoint |
 | `recommendation-orchestrator` | Recommendation rules and AI workflow coordination | Planned |
-| `agent-service` | LLM provider abstraction for Copilot and narrative recommendations | Planned |
+| `agent-service` | Ollama-backed Copilot, prediction, and suggestion service | Implemented as microservice entrypoint |
 
 Public clients should call only `backend-api`. Internal services should communicate through cluster-private Kubernetes services.
 
@@ -81,7 +81,37 @@ Open:
 http://127.0.0.1:8080
 ```
 
-### Minikube
+### k3d With Podman And Ollama
+
+Start Ollama on your Mac first:
+
+```bash
+ollama serve
+ollama pull llama3.2:3b
+```
+
+Deploy the local microservice stack:
+
+```bash
+scripts/k3d-up.sh
+kubectl -n oci-cost-optimizer port-forward svc/backend-api 8080:80
+```
+
+Open:
+
+```text
+http://127.0.0.1:8080
+```
+
+The k3d stack runs separate `backend-api`, `analytics-engine`, and `agent-service` pods. It uses Podman to build the image, imports the image into k3d, and configures the agent service to call Ollama at `http://host.k3d.internal:11434`.
+
+Stop the stack:
+
+```bash
+scripts/k3d-down.sh
+```
+
+### Legacy Minikube
 
 ```bash
 minikube start
@@ -178,8 +208,34 @@ Common runtime variables:
 | `HOST` | `127.0.0.1` local, `0.0.0.0` container | Bind address |
 | `PORT` | `4310` local, `8080` container | HTTP port |
 | `LLM_PROVIDER` | `mock` | LLM provider adapter |
+| `OLLAMA_BASE_URL` | `http://host.k3d.internal:11434` | Ollama endpoint used by `agent-service` |
+| `OLLAMA_MODEL` | `llama3.2:3b` | Local Ollama model for Copilot and suggestions |
+| `ANALYTICS_SERVICE_URL` | empty | Internal analytics service URL used by `backend-api` |
+| `AGENT_SERVICE_URL` | empty | Internal agent service URL used by `backend-api` |
 | `OPENAI_API_KEY` | empty | Required only for OpenAI-backed Copilot |
 | `OPENAI_MODEL` | `gpt-4.1-mini` | OpenAI model name |
+
+## QA, Functional, And Security Testing
+
+Run local unit, functional, and lightweight penetration/security checks:
+
+```bash
+scripts/qa.sh
+```
+
+Run functional checks against a running k3d port-forward:
+
+```bash
+BASE_URL=http://127.0.0.1:8080 scripts/functional-test.sh
+```
+
+The current security checks verify:
+
+- No real secrets or private keys are committed.
+- No mutating OCI SDK or CLI operations are exposed by the backend.
+- k3d workloads run as non-root with dropped Linux capabilities.
+- k3d workloads define CPU and memory requests/limits.
+- Backend security headers are tested in unit tests.
 
 OCI-backed mode also needs OCI tenancy, user, fingerprint, region, config, and private key settings. In Kubernetes, use `Secret` objects for keys and tokens, `ConfigMap` objects for non-sensitive runtime settings, and read-only volume mounts for OCI key files.
 
@@ -187,7 +243,7 @@ OCI-backed mode also needs OCI tenancy, user, fingerprint, region, config, and p
 
 - Replace the current Python `http.server` implementation with FastAPI or another ASGI framework.
 - Add OpenAPI documentation generated from typed request and response schemas.
-- Split provider, analytics, recommendation, and LLM responsibilities into separate services.
+- Continue splitting provider, analytics, recommendation, and LLM responsibilities into separate services.
 - Add authentication, authorization, and audit logging before production use.
 - Add correlation IDs, structured logs, metrics, and distributed tracing.
 - Add Kubernetes network policies, resource limits, disruption budgets, and autoscaling.

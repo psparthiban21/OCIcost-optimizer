@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: optimizer-config
+  namespace: oci-cost-optimizer
+data:
+  APP_MODE: "mock"
+  DATA_PROVIDER: "mock"
+  LLM_PROVIDER: "ollama"
+  OLLAMA_BASE_URL: "http://host.k3d.internal:11434"
+  OLLAMA_MODEL: "llama3.2:3b"
+  ANALYTICS_SERVICE_URL: "http://analytics-engine:8080"
+  AGENT_SERVICE_URL: "http://agent-service:8080"
+
