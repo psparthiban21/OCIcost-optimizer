@@ -24,6 +24,7 @@ def _settings() -> Settings:
         oci_user_ocid="",
         oci_fingerprint="",
         oci_key_file=Path(""),
+        oci_allow_mock_fallback=True,
         llm_provider="ollama",
         openai_api_key_set=False,
         openai_model="gpt-4.1-mini",
@@ -51,4 +52,3 @@ class AgentServiceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

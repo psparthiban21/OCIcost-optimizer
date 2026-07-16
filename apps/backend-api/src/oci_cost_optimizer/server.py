@@ -13,6 +13,7 @@ from uuid import uuid4
 from .config import Settings, load_settings, select_env_file
 from .data_provider import answer_copilot, create_cost_optimizer_data
 from .http_client import ServiceCallError, get_json, post_json
+from .oci_data import OciDataError
 from .setup_status import create_setup_status
 
 
@@ -271,7 +272,49 @@ class ApiHandler(BaseHTTPRequestHandler):
             except ServiceCallError as error:
                 log_event("analytics_service_fallback", reason=str(error))
 
-        return create_cost_optimizer_data(filters, self.settings)
+        try:
+            return create_cost_optimizer_data(filters, self.settings)
+        except OciDataError as error:
+            return {
+                "meta": {
+                    "mode": "oci-unavailable",
+                    "providerError": str(error),
+                    "filters": filters,
+                },
+                "summary": {
+                    "currentRunRate": 0,
+                    "projectedNextMonth": 0,
+                    "identifiedSavings": 0,
+                    "optimizedRunRate": 0,
+                    "openRecommendations": 0,
+                    "highImpactRecommendations": 0,
+                    "monthOverMonthPercent": 0,
+                },
+                "dailyCosts": [],
+                "forecast": [],
+                "spendByService": {},
+                "spendByCompartment": {},
+                "resources": [],
+                "recommendations": [
+                    {
+                        "id": "rec-oci-provider-unavailable",
+                        "severity": "high",
+                        "service": "Billing",
+                        "resourceId": None,
+                        "resourceName": "OCI live provider",
+                        "title": "OCI live provider is unavailable",
+                        "evidence": str(error),
+                        "summary": "The dashboard is running in OCI mode, but the read-only OCI provider could not return live data.",
+                        "action": "Verify the local OCI CLI can start and the configured API key profile has read access.",
+                        "estimatedMonthlySavings": 0,
+                        "estimatedAnnualSavings": 0,
+                        "confidence": 0.9,
+                        "risk": "low",
+                        "owner": "platform",
+                        "status": "open",
+                    }
+                ],
+            }
 
     def _copilot_answer(self, body: dict[str, object]) -> str:
         question = str(body.get("question", ""))
@@ -283,6 +326,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                 response = post_json(
                     f"{self.settings.agent_service_url}/internal/v1/copilot",
                     {"question": question, "filters": filters},
+                    timeout=30.0,
                 )
                 return str(response.get("answer", ""))
             except ServiceCallError as error:

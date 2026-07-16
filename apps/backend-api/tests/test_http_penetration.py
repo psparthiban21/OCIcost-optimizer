@@ -29,6 +29,7 @@ def _settings(port: int) -> Settings:
         oci_user_ocid="",
         oci_fingerprint="",
         oci_key_file=Path(""),
+        oci_allow_mock_fallback=True,
         llm_provider="mock",
         openai_api_key_set=False,
         openai_model="gpt-4.1-mini",
@@ -84,4 +85,3 @@ class HttpPenetrationTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

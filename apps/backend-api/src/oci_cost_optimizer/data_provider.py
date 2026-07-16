@@ -14,6 +14,9 @@ def create_cost_optimizer_data(filters: dict[str, str] | None, settings: Setting
     try:
         return create_oci_cost_optimizer_data(filters, settings)
     except OciDataError as error:
+        if not settings.oci_allow_mock_fallback:
+            raise
+
         data = create_mock_cost_optimizer_data(filters)
         data["meta"]["mode"] = "mock-fallback"
         data["meta"]["providerError"] = str(error)
@@ -27,6 +30,12 @@ def answer_copilot(question: str, filters: dict[str, str] | None, settings: Sett
     try:
         return answer_oci_copilot(question, filters, settings)
     except OciDataError as error:
+        if not settings.oci_allow_mock_fallback:
+            return (
+                "OCI live mode is configured, but the live provider could not refresh data. "
+                f"Reason: {error}"
+            )
+
         return (
             "OCI live mode is configured, but the live provider could not refresh data. "
             f"Reason: {error}\n\n"

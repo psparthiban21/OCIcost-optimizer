@@ -30,6 +30,7 @@ def _settings(port: int, *, analytics_url: str = "", agent_url: str = "", llm_pr
         oci_user_ocid="",
         oci_fingerprint="",
         oci_key_file=Path(""),
+        oci_allow_mock_fallback=True,
         llm_provider=llm_provider,
         openai_api_key_set=False,
         openai_model="gpt-4.1-mini",
@@ -95,4 +96,3 @@ class MicroserviceFunctionalTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

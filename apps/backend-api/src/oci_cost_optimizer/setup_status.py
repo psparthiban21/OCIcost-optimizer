@@ -68,9 +68,9 @@ def create_setup_status(settings: Settings) -> dict[str, Any]:
         {
             "id": "llm_provider",
             "label": "LLM provider",
-            "ok": settings.llm_provider in {"mock", "openai"},
+            "ok": settings.llm_provider in {"mock", "openai", "ollama"},
             "value": settings.llm_provider,
-            "help": "Use LLM_PROVIDER=mock for deterministic local answers or LLM_PROVIDER=openai for OpenAI-backed recommendations.",
+            "help": "Use LLM_PROVIDER=mock for deterministic local answers, LLM_PROVIDER=ollama for local AI, or LLM_PROVIDER=openai for OpenAI-backed recommendations.",
         },
         {
             "id": "openai_api_key",

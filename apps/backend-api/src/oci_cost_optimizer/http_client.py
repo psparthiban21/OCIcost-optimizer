@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from http.client import RemoteDisconnected
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -32,11 +33,10 @@ def _read_json(request: Request, *, timeout: float) -> dict[str, Any]:
     try:
         with urlopen(request, timeout=timeout) as response:
             payload = json.loads(response.read().decode("utf-8"))
-    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
+    except (HTTPError, URLError, TimeoutError, RemoteDisconnected, json.JSONDecodeError) as error:
         raise ServiceCallError(str(error)) from error
 
     if not isinstance(payload, dict):
         raise ServiceCallError("Service returned a non-object JSON payload.")
 
     return payload
-

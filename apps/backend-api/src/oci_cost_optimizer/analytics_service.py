@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlparse
 
 from .config import Settings, load_settings
 from .data_provider import create_cost_optimizer_data
+from .oci_data import OciDataError
 from .server import configure_logging, log_event
 
 
@@ -35,11 +36,18 @@ class AnalyticsHandler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/internal/v1/dashboard":
-            self._send_json(create_cost_optimizer_data(filters, self.settings))
+            try:
+                self._send_json(create_cost_optimizer_data(filters, self.settings))
+            except OciDataError as error:
+                self._send_json({"error": "oci_provider_unavailable", "message": str(error)}, status=HTTPStatus.SERVICE_UNAVAILABLE)
             return
 
         if parsed.path == "/internal/v1/recommendations":
-            data = create_cost_optimizer_data(filters, self.settings)
+            try:
+                data = create_cost_optimizer_data(filters, self.settings)
+            except OciDataError as error:
+                self._send_json({"error": "oci_provider_unavailable", "message": str(error)}, status=HTTPStatus.SERVICE_UNAVAILABLE)
+                return
             self._send_json({"meta": data["meta"], "recommendations": data["recommendations"]})
             return
 

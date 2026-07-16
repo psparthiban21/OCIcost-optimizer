@@ -7,6 +7,7 @@ from typing import Any
 
 from .config import Settings, load_settings
 from .data_provider import answer_copilot, create_cost_optimizer_data
+from .oci_data import OciDataError
 from .ollama_client import OllamaError, generate_with_ollama
 from .server import BadRequestError, MAX_JSON_BODY_BYTES, configure_logging, log_event
 
@@ -57,13 +58,36 @@ class AgentHandler(BaseHTTPRequestHandler):
         log_event("agent_http_request", method=self.command, path=self.path, client=self.client_address[0], message=format % args)
 
     def _build_prompt(self, question: str, filters: dict[str, Any], fallback: str) -> str:
-        data = create_cost_optimizer_data(filters, self.settings)
+        connection_status = "OCI live data is available."
+        try:
+            data = create_cost_optimizer_data(filters, self.settings)
+        except OciDataError as error:
+            connection_status = f"OCI live data is NOT currently available. Provider error: {error}"
+            data = {
+                "summary": {
+                    "currentRunRate": 0,
+                    "projectedNextMonth": 0,
+                    "identifiedSavings": 0,
+                    "openRecommendations": 1,
+                },
+                "recommendations": [
+                    {
+                        "severity": "high",
+                        "service": "Billing",
+                        "title": "OCI live provider is unavailable",
+                        "evidence": str(error),
+                        "action": "Verify the local OCI CLI can start and the configured read-only OCI profile has access.",
+                    }
+                ],
+            }
         summary = data["summary"]
         recommendations = data["recommendations"][:5]
         return (
             "You are an OCI FinOps assistant. Use only the provided cost data. "
             "Do not claim that resources were changed. Do not recommend automatic deletion. "
+            "Follow the connection status exactly; do not say connected when the status says not available. "
             "Keep the answer under 180 words and include practical next steps.\n\n"
+            f"Connection status: {connection_status}\n"
             f"Question: {question}\n"
             f"Summary: current_run_rate={summary['currentRunRate']}, projected_next_month={summary['projectedNextMonth']}, "
             f"identified_savings={summary['identifiedSavings']}, open_recommendations={summary['openRecommendations']}.\n"

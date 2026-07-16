@@ -62,6 +62,10 @@ def _run_oci(settings: Settings, args: list[str], timeout: int = 25) -> dict[str
 
     if completed.returncode != 0:
         message = (completed.stderr or completed.stdout).strip().splitlines()
+        if not message and completed.returncode < 0:
+            raise OciDataError(f"OCI CLI was terminated by signal {-completed.returncode}")
+        if not message:
+            raise OciDataError(f"OCI CLI exited with status {completed.returncode}")
         raise OciDataError(message[-1] if message else "OCI CLI request failed")
 
     try:

@@ -28,6 +28,7 @@ class Settings:
     oci_user_ocid: str
     oci_fingerprint: str
     oci_key_file: Path
+    oci_allow_mock_fallback: bool
     llm_provider: str
     openai_api_key_set: bool
     openai_model: str
@@ -221,6 +222,7 @@ def load_settings() -> Settings:
         oci_user_ocid=os.getenv("OCI_USER_OCID", oci_profile_values.get("user", "")),
         oci_fingerprint=os.getenv("OCI_FINGERPRINT", oci_profile_values.get("fingerprint", "")),
         oci_key_file=oci_key_file,
+        oci_allow_mock_fallback=os.getenv("OCI_ALLOW_MOCK_FALLBACK", "true").lower() in {"1", "true", "yes", "on"},
         llm_provider=os.getenv("LLM_PROVIDER", "mock").lower(),
         openai_api_key_set=bool(os.getenv("OPENAI_API_KEY")),
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),

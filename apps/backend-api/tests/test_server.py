@@ -26,6 +26,7 @@ def _test_settings() -> Settings:
         oci_user_ocid="",
         oci_fingerprint="",
         oci_key_file=Path(""),
+        oci_allow_mock_fallback=True,
         llm_provider="mock",
         openai_api_key_set=False,
         openai_model="gpt-4.1-mini",
